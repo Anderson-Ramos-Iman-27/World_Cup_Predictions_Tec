@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { RankingPodium } from '@/components/ranking-podium';
@@ -39,11 +40,12 @@ export default function RankingPage() {
         ) : null}
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
-          <div className="grid grid-cols-[70px_1fr_90px_100px] gap-3 border-b border-white/10 bg-[#082442] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-blue-200">
+          <div className="grid grid-cols-[70px_1fr_90px_100px_130px] gap-3 border-b border-white/10 bg-[#082442] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-blue-200">
             <span>Pos.</span>
             <span>Participante</span>
             <span className="text-right">Pred.</span>
             <span className="text-right">Puntos</span>
+            <span className="text-right">Detalle</span>
           </div>
           {isLoading ? (
             <p className="px-5 py-4 text-sm text-slate-500">Cargando...</p>
@@ -53,7 +55,7 @@ export default function RankingPage() {
           ) : null}
           {ranking.map((entry) => (
             <div
-              className={`grid grid-cols-[70px_1fr_90px_100px] gap-3 px-5 py-4 text-sm ${
+              className={`grid grid-cols-[70px_1fr_90px_100px_130px] gap-3 px-5 py-4 text-sm ${
                 entry.userId === user?.id ? 'bg-blue-50' : 'bg-white'
               }`}
               key={entry.userId}
@@ -61,16 +63,25 @@ export default function RankingPage() {
               <span className="font-black text-ink">
                 #{entry.position}
               </span>
-              <span>
+              <Link
+                className="block rounded-lg px-2 py-1 transition hover:bg-blue-50"
+                href={`/users/${entry.userId}/predictions`}
+              >
                 <strong className="block text-ink">{entry.name}</strong>
                 <span className="text-xs text-slate-500">{entry.email}</span>
-              </span>
+              </Link>
               <span className="text-right font-semibold text-slate-600">
                 {entry.predictionsCount}
               </span>
               <span className="text-right font-black text-action">
                 {entry.totalPoints}
               </span>
+              <Link
+                className="text-right text-sm font-black text-action hover:text-[#0b4cc4]"
+                href={`/users/${entry.userId}/predictions`}
+              >
+                Ver predicciones
+              </Link>
             </div>
           ))}
         </section>

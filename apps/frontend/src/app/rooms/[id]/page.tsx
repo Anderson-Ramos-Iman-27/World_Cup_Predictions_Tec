@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import { PrivateRoute } from '@/components/layout/private-route';
@@ -23,17 +23,32 @@ export default function RoomDetailPage() {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
+  const [memberToRemove, setMemberToRemove] = useState<RoomMember | null>(null);
+  const [roomForm, setRoomForm] = useState({
+    color: '#1457d9',
+    description: '',
+    name: '',
+  });
 
   const canManage = useMemo(
     () => Boolean(user && room && (user.role === 'ADMIN' || room.owner?.id === user.id)),
     [room, user],
   );
 
-  useEffect(() => {
-    loadRoom();
-  }, [params.id]);
+  const hasRoomChanges = useMemo(() => {
+    if (!room) {
+      return false;
+    }
 
-  function loadRoom() {
+    return (
+      roomForm.name.trim() !== room.name ||
+      roomForm.description.trim() !== (room.description ?? '') ||
+      roomForm.color !== room.color
+    );
+  }, [room, roomForm]);
+
+  const loadRoom = useCallback(() => {
     setIsLoading(true);
     Promise.all([
       apiRequest<Room>(`/rooms/${params.id}`),
@@ -49,23 +64,41 @@ export default function RoomDetailPage() {
         setError(error instanceof Error ? error.message : 'No se pudo cargar la sala'),
       )
       .finally(() => setIsLoading(false));
-  }
+  }, [params.id]);
+
+  useEffect(() => {
+    loadRoom();
+  }, [loadRoom]);
+
+  useEffect(() => {
+    if (!room) {
+      return;
+    }
+
+    setRoomForm({
+      color: room.color,
+      description: room.description ?? '',
+      name: room.name,
+    });
+  }, [room]);
 
   async function handleUpdateRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!room) {
       return;
     }
+    if (!hasRoomChanges) {
+      return;
+    }
 
     setError('');
     setMessage('');
     setIsSaving(true);
-
-    const form = new FormData(event.currentTarget);
+    setOverlayMessage('Guardando cambios de la sala...');
     const payload = {
-      name: String(form.get('name') ?? '').trim(),
-      description: String(form.get('description') ?? '').trim(),
-      color: String(form.get('color') ?? room.color),
+      name: roomForm.name.trim(),
+      description: roomForm.description.trim(),
+      color: roomForm.color,
     };
 
     try {
@@ -79,6 +112,7 @@ export default function RoomDetailPage() {
       setError(error instanceof Error ? error.message : 'No se pudo actualizar la sala');
     } finally {
       setIsSaving(false);
+      setOverlayMessage('');
     }
   }
 
@@ -90,6 +124,8 @@ export default function RoomDetailPage() {
     setError('');
     setMessage('');
     setIsSaving(true);
+    setMemberToRemove(null);
+    setOverlayMessage('Quitando integrante de la sala...');
 
     try {
       await apiRequest(`/rooms/${room.id}/members/${member.userId}`, {
@@ -101,6 +137,7 @@ export default function RoomDetailPage() {
       setError(error instanceof Error ? error.message : 'No se pudo eliminar integrante');
     } finally {
       setIsSaving(false);
+      setOverlayMessage('');
     }
   }
 
@@ -110,6 +147,17 @@ export default function RoomDetailPage() {
         title={room?.name ?? 'Detalle de sala'}
         subtitle="Gestiona integrantes, codigo de acceso y podio de esta sala."
       >
+        {overlayMessage ? <LoadingOverlay message={overlayMessage} /> : null}
+        {memberToRemove ? (
+          <ConfirmDialog
+            description={`Se quitara a ${memberToRemove.user.name} de esta sala. Esta accion no elimina su cuenta ni sus predicciones globales.`}
+            isBusy={isSaving}
+            title="Quitar integrante"
+            confirmLabel="Si, quitar integrante"
+            onCancel={() => setMemberToRemove(null)}
+            onConfirm={() => handleRemoveMember(memberToRemove)}
+          />
+        ) : null}
         {isLoading ? <p className="text-sm text-slate-500">Cargando...</p> : null}
         {error ? (
           <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
@@ -143,7 +191,11 @@ export default function RoomDetailPage() {
                       Comparte este codigo con tus invitados para que puedan unirse a la sala desde la pantalla de Salas.
                     </p>
                   </div>
-                  <Link className="text-sm font-bold text-action" href="/rooms">
+                  <Link
+                    className="text-sm font-bold text-action"
+                    href="/rooms"
+                    onClick={() => setOverlayMessage('Volviendo a salas...')}
+                  >
                     Volver
                   </Link>
                 </div>
@@ -152,17 +204,26 @@ export default function RoomDetailPage() {
                   <form className="mt-6 grid gap-4" onSubmit={handleUpdateRoom}>
                     <div className="grid gap-4 md:grid-cols-2">
                       <RoomEditField
-                        defaultValue={room.name}
                         label="Nombre"
                         name="name"
+                        value={roomForm.name}
+                        onChange={(value) =>
+                          setRoomForm((current) => ({ ...current, name: value }))
+                        }
                       />
                       <label className="block">
                         <span className="text-sm font-bold text-ink">Color</span>
                         <input
                           className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3"
-                          defaultValue={room.color}
                           name="color"
                           type="color"
+                          value={roomForm.color}
+                          onChange={(event) =>
+                            setRoomForm((current) => ({
+                              ...current,
+                              color: event.target.value,
+                            }))
+                          }
                         />
                       </label>
                     </div>
@@ -170,18 +231,24 @@ export default function RoomDetailPage() {
                       <span className="text-sm font-bold text-ink">Descripcion</span>
                       <textarea
                         className="mt-2 min-h-24 w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
-                        defaultValue={room.description ?? ''}
                         maxLength={240}
                         name="description"
+                        value={roomForm.description}
+                        onChange={(event) =>
+                          setRoomForm((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
                       />
                     </label>
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <button
                         className="h-11 rounded-xl bg-action px-5 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={isSaving}
+                        disabled={isSaving || !hasRoomChanges}
                         type="submit"
                       >
-                        Guardar cambios
+                        {isSaving ? 'Guardando...' : hasRoomChanges ? 'Guardar cambios' : 'Sin cambios'}
                       </button>
                     </div>
                   </form>
@@ -196,8 +263,9 @@ export default function RoomDetailPage() {
                   <p className="text-sm text-slate-500">Aun no hay puntajes en esta sala.</p>
                 ) : null}
                 {podium.map((entry) => (
-                  <div
-                    className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+                  <Link
+                    className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 transition hover:bg-blue-50"
+                    href={`/users/${entry.userId}/predictions`}
                     key={entry.userId}
                   >
                     <div>
@@ -211,7 +279,7 @@ export default function RoomDetailPage() {
                     <span className="text-sm font-black text-action">
                       {entry.totalPoints} pts
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </section>
@@ -237,7 +305,7 @@ export default function RoomDetailPage() {
                           className="text-xs font-black text-red-600 hover:text-red-700 disabled:opacity-60"
                           disabled={isSaving}
                           type="button"
-                          onClick={() => handleRemoveMember(member)}
+                          onClick={() => setMemberToRemove(member)}
                         >
                           Quitar
                         </button>
@@ -254,24 +322,84 @@ export default function RoomDetailPage() {
   );
 }
 
+function ConfirmDialog({
+  confirmLabel,
+  description,
+  isBusy,
+  onCancel,
+  onConfirm,
+  title,
+}: {
+  confirmLabel: string;
+  description: string;
+  isBusy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  title: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#06182c]/65 px-5 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <h2 className="text-xl font-black text-ink">{title}</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-ink transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy}
+            type="button"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+          <button
+            className="h-11 rounded-xl bg-red-600 px-5 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy}
+            type="button"
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RoomEditField({
-  defaultValue,
   label,
   name,
+  onChange,
+  value,
 }: {
-  defaultValue: string;
   label: string;
   name: string;
+  onChange: (value: string) => void;
+  value: string;
 }) {
   return (
     <label className="block">
       <span className="text-sm font-bold text-ink">{label}</span>
       <input
         className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
-        defaultValue={defaultValue}
         name={name}
         required
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
       />
     </label>
+  );
+}
+
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
+        <p className="mt-4 text-base font-black text-ink">{message}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Actualizando la informacion de la sala.
+        </p>
+      </div>
+    </div>
   );
 }

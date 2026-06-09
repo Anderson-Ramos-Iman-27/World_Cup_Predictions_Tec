@@ -20,6 +20,7 @@ export default function MatchesPage() {
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [navigationMessage, setNavigationMessage] = useState('');
 
   useEffect(() => {
     setIsLoading(true);
@@ -78,6 +79,7 @@ export default function MatchesPage() {
       title="Partidos"
       subtitle="Revisa los partidos disponibles. Para guardar una predicción debes iniciar sesión."
     >
+      {navigationMessage ? <LoadingOverlay message={navigationMessage} /> : null}
       <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-black text-ink">Filtros</h2>
@@ -148,10 +150,29 @@ export default function MatchesPage() {
           <p className="text-sm text-slate-500">No hay partidos para este filtro.</p>
         ) : null}
         {filteredMatches.map((match) => (
-          <MatchCard href={`/matches/${match.id}`} key={match.id} match={match} />
+          <MatchCard
+            href={`/matches/${match.id}`}
+            key={match.id}
+            match={match}
+            onNavigate={() => setNavigationMessage('Abriendo detalle del partido...')}
+          />
         ))}
       </div>
     </AppShell>
+  );
+}
+
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
+        <p className="mt-4 text-base font-black text-ink">{message}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Preparando la informacion.
+        </p>
+      </div>
+    </div>
   );
 }
 

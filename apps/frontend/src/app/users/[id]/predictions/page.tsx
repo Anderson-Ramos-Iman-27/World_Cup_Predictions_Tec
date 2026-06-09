@@ -1,39 +1,66 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { PrivateRoute } from '@/components/layout/private-route';
 import { TeamBadge } from '@/components/team-badge';
 import {
-  calculateCurrentStreak,
   formatDateTime,
   getStatusLabel,
 } from '@/features/user-panel/formatters';
 import type { Prediction } from '@/features/user-panel/types';
 import { apiRequest } from '@/lib/http-client';
 
-export default function PredictionsPage() {
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
+type UserPredictionHistory = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  predictions: Prediction[];
+};
+
+export default function UserPredictionsPage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const [history, setHistory] = useState<UserPredictionHistory | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [navigationMessage, setNavigationMessage] = useState('');
-  const currentStreak = calculateCurrentStreak(predictions);
 
   useEffect(() => {
-    apiRequest<Prediction[]>('/predictions/my')
-      .then(setPredictions)
+    apiRequest<UserPredictionHistory>(`/rankings/users/${params.id}/history`)
+      .then(setHistory)
       .catch((error) =>
-        setError(error instanceof Error ? error.message : 'No se pudo cargar predicciones'),
+        setError(error instanceof Error ? error.message : 'No se pudo cargar el historial'),
       )
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [params.id]);
+
+  const totals = useMemo(() => {
+    const predictions = history?.predictions ?? [];
+
+    return {
+      count: predictions.length,
+      scored: predictions.filter((prediction) => prediction.score).length,
+      points: predictions.reduce(
+        (total, prediction) => total + (prediction.score?.totalPoints ?? 0),
+        0,
+      ),
+      bonus: predictions.reduce(
+        (total, prediction) => total + (prediction.score?.bonusPoints ?? 0),
+        0,
+      ),
+    };
+  }, [history]);
 
   return (
     <PrivateRoute>
       <AppShell
-        title="Mis predicciones"
-        subtitle="Consulta tus marcadores registrados y puntajes. Las predicciones guardadas no se pueden editar."
+        title={history ? `Predicciones de ${history.user.name}` : 'Predicciones del participante'}
+        subtitle="Consulta sus predicciones y el detalle de puntos como mecanismo de transparencia."
       >
         {navigationMessage ? <LoadingOverlay message={navigationMessage} /> : null}
         {error ? (
@@ -41,48 +68,91 @@ export default function PredictionsPage() {
             {error}
           </div>
         ) : null}
+        {isLoading ? <p className="text-sm text-slate-500">Cargando historial...</p> : null}
 
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-action">
-              Racha actual
-            </p>
-            <p className="mt-2 text-3xl font-black text-ink">
-              {currentStreak} aciertos consecutivos
-            </p>
-            <p className="mt-2 text-sm font-semibold text-slate-600">
-              Cada 3 aciertos consecutivos de ganador o mejor suman 2 puntos extra.
-            </p>
+        {history ? (
+          <div className="space-y-6">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
+              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-action">
+                    Transparencia de puntaje
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-ink">{history.user.name}</h2>
+                  <p className="mt-1 text-sm text-slate-500">{history.user.email}</p>
+                  <button
+                    className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-ink transition hover:border-action hover:text-action"
+                    type="button"
+                    onClick={() => {
+                      setNavigationMessage('Volviendo a la pantalla anterior...');
+                      router.back();
+                    }}
+                  >
+                    Volver
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Metric label="Predicciones" value={totals.count} />
+                  <Metric label="Calculadas" value={totals.scored} />
+                  <Metric label="Bonus" value={totals.bonus} />
+                  <Metric label="Puntos" value={totals.points} />
+                </div>
+              </div>
+            </section>
+
+            {!isLoading && history.predictions.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+                Este participante aún no tiene predicciones registradas.
+              </div>
+            ) : null}
+
+            <section className="grid gap-4">
+              {history.predictions.map((prediction) => (
+                <PredictionAuditCard
+                  prediction={prediction}
+                  key={prediction.id}
+                  onNavigate={() => setNavigationMessage('Abriendo detalle del partido...')}
+                />
+              ))}
+            </section>
           </div>
-
-          {isLoading ? <p className="text-sm text-slate-500">Cargando...</p> : null}
-          {!isLoading && predictions.length === 0 ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-              Aun no tienes predicciones. Revisa los partidos disponibles para registrar una.
-            </div>
-          ) : null}
-
-          {predictions.map((prediction) => (
-            <PredictionCard
-              prediction={prediction}
-              key={prediction.id}
-              onNavigate={() => setNavigationMessage('Abriendo detalle del partido...')}
-            />
-          ))}
-        </div>
+        ) : null}
       </AppShell>
     </PrivateRoute>
   );
 }
 
-function PredictionCard({
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl bg-slate-50 px-4 py-3 text-right">
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
+        <p className="mt-4 text-base font-black text-ink">{message}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Preparando la informacion.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function PredictionAuditCard({
   onNavigate,
   prediction,
 }: {
   onNavigate: () => void;
   prediction: Prediction;
 }) {
-  const statusClasses = getPredictionStatusClasses(prediction);
+  const statusClasses = getPredictionAuditClasses(prediction);
 
   return (
     <article className={`rounded-2xl border p-5 shadow-[0_14px_34px_rgba(15,35,66,0.08)] ${statusClasses.card}`}>
@@ -96,8 +166,16 @@ function PredictionCard({
               {getStatusLabel(prediction.match.status)}
             </span>
             <span className={`rounded-full px-3 py-1 text-xs font-black ${statusClasses.badge}`}>
-              {getPredictionStatusLabel(prediction)}
+              {getPredictionAuditLabel(prediction)}
             </span>
+            {prediction.room ? (
+              <span
+                className="rounded-full px-3 py-1 text-xs font-black text-white"
+                style={{ backgroundColor: prediction.room.color }}
+              >
+                {prediction.room.name}
+              </span>
+            ) : null}
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
@@ -122,7 +200,7 @@ function PredictionCard({
 
         <div className={`rounded-xl border p-4 lg:min-w-80 ${statusClasses.summary}`}>
           <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-            Prediccion registrada
+            Predicción registrada
           </p>
           <p className="mt-2 text-2xl font-black text-ink">
             {formatPredictionValue(prediction)}
@@ -140,11 +218,11 @@ function PredictionCard({
       </div>
 
       <div className={`mt-4 rounded-xl px-4 py-3 text-sm leading-6 text-slate-700 ${statusClasses.detail}`}>
-        <p className="font-black text-ink">Detalle del calculo</p>
+        <p className="font-black text-ink">Detalle del cálculo</p>
         <p className="mt-1">
           {prediction.score?.reason
             ? normalizeReason(prediction.score.reason)
-            : 'Pendiente de calculo. El puntaje se calculara cuando el partido finalice y tenga resultado oficial.'}
+            : 'Pendiente de cálculo. El puntaje se calculará cuando el partido finalice y tenga resultado oficial.'}
         </p>
       </div>
 
@@ -158,20 +236,6 @@ function PredictionCard({
         </Link>
       </div>
     </article>
-  );
-}
-
-function LoadingOverlay({ message }: { message: string }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
-      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
-        <p className="mt-4 text-base font-black text-ink">{message}</p>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Preparando la informacion.
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -201,6 +265,35 @@ function PointBox({
       ) : null}
     </div>
   );
+}
+
+function getBonusDetail(prediction: Prediction) {
+  if (!prediction.score) {
+    return 'El bonus se calculara cuando el partido finalice y exista resultado oficial.';
+  }
+
+  const bonusPoints = prediction.score.bonusPoints ?? 0;
+
+  if (bonusPoints <= 0) {
+    return 'Esta prediccion no obtuvo bonus. Puede ganar bonus por registrarse con mas de 24 horas de anticipacion o por racha de aciertos.';
+  }
+
+  const reason = (prediction.score.reason ?? '').toLowerCase();
+  const details: string[] = [];
+
+  if (reason.includes('anticipada')) {
+    details.push('Prediccion anticipada: +1 punto por registrarla con mas de 24 horas de anticipacion.');
+  }
+
+  if (reason.includes('racha')) {
+    details.push('Bonus por racha: +2 puntos por cada 3 aciertos consecutivos.');
+  }
+
+  if (details.length === 0) {
+    details.push('Bonus aplicado segun las reglas de puntuacion.');
+  }
+
+  return details.join(' ');
 }
 
 function getPredictionTypeLabel(prediction: Prediction) {
@@ -239,7 +332,7 @@ function getOutcomeLabel(outcome: Prediction['predictedWinner'], prediction: Pre
   return 'Empate';
 }
 
-function getPredictionStatusClasses(prediction: Prediction) {
+function getPredictionAuditClasses(prediction: Prediction) {
   if (!prediction.score) {
     return {
       card: 'border-slate-200 bg-white',
@@ -266,46 +359,17 @@ function getPredictionStatusClasses(prediction: Prediction) {
   };
 }
 
-function getPredictionStatusLabel(prediction: Prediction) {
+function getPredictionAuditLabel(prediction: Prediction) {
   if (!prediction.score) {
     return 'En progreso';
   }
 
-  return (prediction.score.basePoints ?? 0) > 0 ? 'Acerto' : 'No acerto';
-}
-
-function getBonusDetail(prediction: Prediction) {
-  if (!prediction.score) {
-    return 'El bonus se calculara cuando el partido finalice y exista resultado oficial.';
-  }
-
-  const bonusPoints = prediction.score.bonusPoints ?? 0;
-
-  if (bonusPoints <= 0) {
-    return 'Esta prediccion no obtuvo bonus. Puede ganar bonus por registrarse con mas de 24 horas de anticipacion o por racha de aciertos.';
-  }
-
-  const reason = (prediction.score.reason ?? '').toLowerCase();
-  const details: string[] = [];
-
-  if (reason.includes('anticipada')) {
-    details.push('Prediccion anticipada: +1 punto por registrarla con mas de 24 horas de anticipacion.');
-  }
-
-  if (reason.includes('racha')) {
-    details.push('Bonus por racha: +2 puntos por cada 3 aciertos consecutivos.');
-  }
-
-  if (details.length === 0) {
-    details.push('Bonus aplicado segun las reglas de puntuacion.');
-  }
-
-  return details.join(' ');
+  return (prediction.score.basePoints ?? 0) > 0 ? 'Acertó' : 'No acertó';
 }
 
 function normalizeReason(reason: string) {
   return reason
-    .replace('prediccion anticipada', 'prediccion anticipada')
+    .replace('prediccion anticipada', 'predicción anticipada')
     .replace('bonus por racha', 'bonus por racha')
     .replace('resultado exacto', 'resultado exacto')
     .replace('ganador correcto', 'ganador correcto')

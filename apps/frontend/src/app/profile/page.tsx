@@ -23,6 +23,14 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
   const [isCodeSending, setIsCodeSending] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
+
+  const hasProfileChanges = Boolean(profile && name.trim() !== profile.name);
+  const canUpdatePassword =
+    passwordCode.trim().length === 8 &&
+    isStrongPassword(newPassword) &&
+    newPassword === confirmPassword &&
+    confirmPassword.length > 0;
 
   useEffect(() => {
     apiRequest<AuthUser>('/users/me')
@@ -41,12 +49,17 @@ export default function ProfilePage() {
     setError('');
     setSuccess('');
 
+    if (!hasProfileChanges) {
+      return;
+    }
+
     if (name.trim().length < 2) {
       setError('El nombre debe tener al menos 2 caracteres.');
       return;
     }
 
     setIsSaving(true);
+    setOverlayMessage('Guardando cambios del perfil...');
 
     try {
       const updated = await apiRequest<AuthUser>('/users/me', {
@@ -60,6 +73,7 @@ export default function ProfilePage() {
       setError(error instanceof Error ? error.message : 'No se pudo actualizar perfil');
     } finally {
       setIsSaving(false);
+      setOverlayMessage('');
     }
   }
 
@@ -74,6 +88,7 @@ export default function ProfilePage() {
     setError('');
     setSuccess('');
     setIsCodeSending(true);
+    setOverlayMessage('Enviando codigo de seguridad...');
 
     try {
       const response = await apiRequest<{ message: string }>('/auth/forgot-password', {
@@ -85,6 +100,7 @@ export default function ProfilePage() {
       setError(error instanceof Error ? error.message : 'No se pudo enviar el código');
     } finally {
       setIsCodeSending(false);
+      setOverlayMessage('');
     }
   }
 
@@ -115,6 +131,7 @@ export default function ProfilePage() {
     }
 
     setIsPasswordSaving(true);
+    setOverlayMessage('Actualizando contrasena...');
 
     try {
       const response = await apiRequest<{ message: string }>('/auth/reset-password', {
@@ -133,6 +150,7 @@ export default function ProfilePage() {
       setError(error instanceof Error ? error.message : 'No se pudo cambiar la contraseña');
     } finally {
       setIsPasswordSaving(false);
+      setOverlayMessage('');
     }
   }
 
@@ -142,6 +160,7 @@ export default function ProfilePage() {
         title="Perfil"
         subtitle="Consulta tus datos de cuenta, actualiza tu nombre visible y protege tu contraseña."
       >
+        {overlayMessage ? <LoadingOverlay message={overlayMessage} /> : null}
         {error ? (
           <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             {error}
@@ -200,9 +219,9 @@ export default function ProfilePage() {
               <button
                 className="h-11 rounded-lg bg-action px-5 text-sm font-bold text-white hover:bg-[#0b4cc4] disabled:cursor-not-allowed disabled:bg-slate-400"
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || !hasProfileChanges}
               >
-                {isSaving ? 'Guardando...' : 'Guardar cambios'}
+                {isSaving ? 'Guardando...' : hasProfileChanges ? 'Guardar cambios' : 'Sin cambios'}
               </button>
             </form>
           </section>
@@ -261,7 +280,7 @@ export default function ProfilePage() {
               <div className="lg:col-span-2">
                 <button
                   className="h-11 rounded-lg bg-action px-5 text-sm font-bold text-white hover:bg-[#0b4cc4] disabled:cursor-not-allowed disabled:bg-slate-400"
-                  disabled={isPasswordSaving}
+                  disabled={isPasswordSaving || !canUpdatePassword}
                   type="submit"
                 >
                   {isPasswordSaving ? 'Actualizando...' : 'Actualizar contraseña'}
@@ -272,5 +291,19 @@ export default function ProfilePage() {
         </div>
       </AppShell>
     </PrivateRoute>
+  );
+}
+
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
+        <p className="mt-4 text-base font-black text-ink">{message}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Estamos procesando la solicitud. Espera un momento.
+        </p>
+      </div>
+    </div>
   );
 }

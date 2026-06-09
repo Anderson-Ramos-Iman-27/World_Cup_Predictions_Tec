@@ -2,17 +2,20 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import { PrivateRoute } from '@/components/layout/private-route';
 import type { Room } from '@/features/user-panel/types';
 import { apiRequest } from '@/lib/http-client';
 
 export default function RoomsPage() {
+  const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
   const [selectedColor, setSelectedColor] = useState('#1457d9');
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function RoomsPage() {
     };
 
     try {
-      await apiRequest<Room>('/rooms', {
+      const createdRoom = await apiRequest<Room>('/rooms', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -52,6 +55,8 @@ export default function RoomsPage() {
       setSelectedColor('#1457d9');
       setMessage('Sala creada correctamente.');
       loadRooms();
+      setOverlayMessage('Ingresando a la sala creada...');
+      router.push(`/rooms/${createdRoom.id}`);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo crear la sala');
     } finally {
@@ -70,13 +75,15 @@ export default function RoomsPage() {
     const code = String(form.get('code') ?? '').trim().toUpperCase();
 
     try {
-      await apiRequest<Room>('/rooms/join', {
+      const joinedRoom = await apiRequest<Room>('/rooms/join', {
         method: 'POST',
         body: JSON.stringify({ code }),
       });
       formElement.reset();
       setMessage('Te uniste a la sala correctamente.');
       loadRooms();
+      setOverlayMessage('Ingresando a la sala...');
+      router.push(`/rooms/${joinedRoom.id}`);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo unir a la sala');
     } finally {
@@ -90,6 +97,7 @@ export default function RoomsPage() {
         title="Mis salas"
         subtitle="Crea grupos privados, personaliza su color y compite por podios propios."
       >
+        {overlayMessage ? <LoadingOverlay message={overlayMessage} /> : null}
         {error ? (
           <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             {error}
@@ -182,7 +190,11 @@ export default function RoomsPage() {
                 </p>
               ) : null}
               {rooms.map((room) => (
-                <RoomCard key={room.id} room={room} />
+                <RoomCard
+                  key={room.id}
+                  room={room}
+                  onEnter={() => setOverlayMessage('Ingresando a la sala...')}
+                />
               ))}
             </div>
           </section>
@@ -192,11 +204,12 @@ export default function RoomsPage() {
   );
 }
 
-function RoomCard({ room }: { room: Room }) {
+function RoomCard({ onEnter, room }: { onEnter: () => void; room: Room }) {
   return (
     <Link
       className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(15,35,66,0.14)]"
       href={`/rooms/${room.id}`}
+      onClick={onEnter}
     >
       <div className="h-2" style={{ backgroundColor: room.color }} />
       <div className="p-4">
@@ -214,12 +227,31 @@ function RoomCard({ room }: { room: Room }) {
             style={{ backgroundColor: room.color }}
           />
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-bold text-slate-500">
-          <span>{room._count?.members ?? 0} integrantes</span>
-          <span>Codigo {room.code}</span>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-slate-500">
+          <div className="flex flex-wrap items-center gap-3">
+            <span>{room._count?.members ?? 0} integrantes</span>
+            <span>Codigo {room.code}</span>
+          </div>
+          <span className="font-black text-action transition group-hover:text-[#0b4cc4]">
+            Ingresar a sala
+          </span>
         </div>
       </div>
     </Link>
+  );
+}
+
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
+        <p className="mt-4 text-base font-black text-ink">{message}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Preparando la información de la sala.
+        </p>
+      </div>
+    </div>
   );
 }
 

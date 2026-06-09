@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const [slides, setSlides] = useState<CarouselSlide[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [navigationMessage, setNavigationMessage] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -85,10 +86,43 @@ export default function DashboardPage() {
       }
       heroContent={<HomeCarousel slides={slides} />}
     >
+        {navigationMessage ? <LoadingOverlay message={navigationMessage} /> : null}
         {error ? (
           <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             {error}
           </div>
+        ) : null}
+
+        {user ? (
+          <section className="mb-5 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
+            <div className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-action">
+                  Bienvenido de vuelta
+                </p>
+                <h2 className="mt-2 text-2xl font-black text-ink">
+                  Hola, {user.name}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
+                  Revisa los partidos abiertos, registra nuevas predicciones y sigue tu avance en el ranking global y en tus salas.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-action px-5 text-sm font-black text-white transition hover:bg-blue-700"
+                  href="/matches"
+                >
+                  Ver partidos
+                </Link>
+                <Link
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-sm font-black text-ink transition hover:border-action hover:text-action"
+                  href="/predictions"
+                >
+                  Mis predicciones
+                </Link>
+              </div>
+            </div>
+          </section>
         ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -139,7 +173,12 @@ export default function DashboardPage() {
                 <p className="text-sm text-slate-500">No hay partidos abiertos.</p>
               ) : null}
               {matches.slice(0, 3).map((match) => (
-                <MatchCard href={`/matches/${match.id}`} key={match.id} match={match} />
+                <MatchCard
+                  href={`/matches/${match.id}`}
+                  key={match.id}
+                  match={match}
+                  onNavigate={() => setNavigationMessage('Abriendo detalle del partido...')}
+                />
               ))}
             </div>
           </section>
@@ -205,6 +244,20 @@ export default function DashboardPage() {
           </section>
         </div>
     </AppShell>
+  );
+}
+
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
+        <p className="mt-4 text-base font-black text-ink">{message}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Preparando la informacion.
+        </p>
+      </div>
+    </div>
   );
 }
 

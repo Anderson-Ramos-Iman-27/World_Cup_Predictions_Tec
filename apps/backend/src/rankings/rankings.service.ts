@@ -132,17 +132,20 @@ export class RankingsService {
   async getUserHistory(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    return this.prisma.prediction.findMany({
+    const predictions = await this.prisma.prediction.findMany({
       where: {
         userId,
-        score: { isNot: null },
       },
       include: {
         room: {
@@ -166,6 +169,11 @@ export class RankingsService {
         },
       },
     });
+
+    return {
+      user,
+      predictions,
+    };
   }
 
   async invalidateGlobalRanking() {

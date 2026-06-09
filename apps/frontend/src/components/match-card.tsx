@@ -10,9 +10,10 @@ import type { Match } from '@/features/user-panel/types';
 type MatchCardProps = {
   match: Match;
   href?: string;
+  onNavigate?: () => void;
 };
 
-export function MatchCard({ match, href }: MatchCardProps) {
+export function MatchCard({ match, href, onNavigate }: MatchCardProps) {
   const isLive = match.status === 'LIVE';
   const isFinished = match.status === 'FINISHED';
   const open = canPredict(match.status, match.utcDate);
@@ -59,7 +60,7 @@ export function MatchCard({ match, href }: MatchCardProps) {
   }
 
   return (
-    <Link className="block" href={href}>
+    <Link className="block" href={href} onClick={onNavigate}>
       {card}
     </Link>
   );

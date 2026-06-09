@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { RankingEntry } from '@/features/user-panel/types';
 
 export function RankingPodium({ entries }: { entries: RankingEntry[] }) {
@@ -31,8 +32,9 @@ function PodiumCard({ entry }: { entry: RankingEntry }) {
       : 'min-h-60 bg-gradient-to-br from-[#d96a2b] via-[#c53f08] to-[#922400] text-white md:order-3';
 
   return (
-    <article
+    <Link
       className={`relative overflow-hidden rounded-2xl p-6 shadow-[0_18px_34px_rgba(15,35,66,0.18)] ${classes}`}
+      href={`/users/${entry.userId}/predictions`}
     >
       <div className="absolute right-5 top-5 rounded-full bg-white/20 px-3 py-1 text-sm font-black">
         #{entry.position}
@@ -47,8 +49,11 @@ function PodiumCard({ entry }: { entry: RankingEntry }) {
         </p>
         <p className="mt-4 text-4xl font-black leading-none">{entry.totalPoints}</p>
         <p className="mt-1 text-sm font-bold text-white/85">puntos</p>
+        <span className="mt-4 rounded-full bg-white/20 px-4 py-2 text-xs font-black text-white">
+          Ver predicciones
+        </span>
       </div>
-    </article>
+    </Link>
   );
 }
 

@@ -4,9 +4,9 @@ Este archivo se actualizara despues de ejecutar cada prompt para saber exactamen
 
 ## Estado general
 
-- **Prompt actual:** Prompt 18 - Documentacion API y Ambiente
-- **Estado del proyecto:** Panel de administrador frontend implementado y validado
-- **Ultima actualizacion:** 2026-06-07
+- **Prompt actual:** Prompt 20 - Stress testing
+- **Estado del proyecto:** Pruebas backend/frontend organizadas y validadas
+- **Ultima actualizacion:** 2026-06-09
 - **Notas generales:** Antes de ejecutar prompts de desarrollo, revisar `descripcion-proyecto.md`, `informe.md`, `plan-desarrollo.md` y `doc/README.md`.
 
 ## Leyenda
@@ -39,8 +39,8 @@ Este archivo se actualizara despues de ejecutar cada prompt para saber exactamen
 | 15 | `doc/prompts/15-frontend-panel-usuario.md` | Completado | 2026-06-07 | Dashboard, partidos, predicciones, ranking y perfil validados |
 | 16 | `doc/prompts/16-frontend-salas-podios.md` | Completado | 2026-06-07 | Crear/editar salas, color, integrantes, invitaciones y podio implementados |
 | 17 | `doc/prompts/17-frontend-panel-admin.md` | Completado | 2026-06-07 | Dashboard admin, usuarios, salas, partidos, resultados, sync, scoring, carrusel, logs y auditoria |
-| 18 | `doc/prompts/18-documentacion-api-ambiente.md` | Pendiente | - | README, api.md y environment.md |
-| 19 | `doc/prompts/19-pruebas.md` | Pendiente | - | Unit, integration, frontend y e2e |
+| 18 | `doc/prompts/18-documentacion-api-ambiente.md` | Completado | 2026-06-09 | README, docs/api.md y docs/environment.md actualizados |
+| 19 | `doc/prompts/19-pruebas.md` | Completado | 2026-06-09 | Backend Jest, frontend smoke tests, typecheck, builds y escenarios E2E documentados |
 | 20 | `doc/prompts/20-stress-testing.md` | Pendiente | - | Escenarios de carga y stress-testing.md |
 | 21 | `doc/prompts/21-preparacion-despliegue.md` | Pendiente | - | prod compose, deployment.md y checklist |
 | 22 | `doc/prompts/22-revision-final.md` | Pendiente | - | Revision general y cierre |
@@ -218,6 +218,26 @@ Este archivo se actualizara despues de ejecutar cada prompt para saber exactamen
 - Se agrego endpoint backend `GET /api/admin/teams` para alimentar selects de equipos en creacion manual de partidos.
 - Se valido `npm run typecheck -w apps/frontend`, `npm run build -w apps/backend` y `npm test -w apps/backend -- --runInBand` correctamente.
 - El siguiente prompt de implementacion es `doc/prompts/18-documentacion-api-ambiente.md`.
+
+### 2026-06-09
+
+- Se ejecuto `doc/prompts/18-documentacion-api-ambiente.md`.
+- Se creo `docs/api.md` con rutas publicas, autenticacion, usuarios, salas, predicciones, rankings, transparencia, administracion, roles y flujos principales.
+- Se creo `docs/environment.md` con requisitos, instalacion, configuracion `.env`, variables de frontend, backend, PostgreSQL, Redis, Football-Data.org, SMTP, Nginx, comandos locales, Prisma y validaciones.
+- Se actualizo `README.md` para reflejar el estado actual del proyecto, stack, estructura, instalacion, comandos, funcionalidades y enlaces de documentacion.
+- Se marco el Prompt 18 como completado.
+- El siguiente prompt de implementacion es `doc/prompts/19-pruebas.md`.
+- Se ejecuto `doc/prompts/19-pruebas.md`.
+- Se agrego script `npm test -w apps/frontend` con pruebas smoke basadas en `node --test`.
+- Se creo `apps/frontend/tests/user-flows.test.mjs` para validar presencia de flujos de login, registro, salas, predicciones, transparencia, podios y panel admin.
+- Se ejecuto `npm test -w apps/frontend` con 8 pruebas aprobadas.
+- Se ejecuto `npm test -w apps/backend -- --runInBand` con 10 suites y 40 pruebas aprobadas.
+- Se ejecuto `npm run typecheck -w apps/frontend` correctamente.
+- Se ejecuto `npm run build -w apps/frontend` correctamente, con warnings conocidos de `<img>`.
+- Se ejecuto `npm run build -w apps/backend` correctamente.
+- Se actualizo `docs/testing.md` con estrategia, resultados y escenarios E2E para usuario, propietario, admin y sincronizacion externa.
+- Se marco el Prompt 19 como completado.
+- El siguiente prompt de implementacion es `doc/prompts/20-stress-testing.md`.
 
 ## Bloqueos actuales
 
