@@ -1,0 +1,16 @@
+{
+  "name": "world-cup-prediction-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Educational World Cup prediction platform monorepo.",
+  "scripts": {
+    "dev": "docker compose up --build",
+    "dev:down": "docker compose down",
+    "dev:logs": "docker compose logs -f",
+    "docs": "echo \"Docs are available in ./docs and ./doc\""
+  },
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend"
+  ]
+}

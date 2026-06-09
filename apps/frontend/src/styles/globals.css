@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  background: #f8fafc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.auth-image-panel {
+  background-color: #0b1f3d;
+  background-image:
+    linear-gradient(180deg, rgba(7, 22, 46, 0.04), rgba(7, 22, 46, 0.08)),
+    radial-gradient(circle at 35% 35%, rgba(20, 87, 217, 0.42), transparent 30%),
+    linear-gradient(135deg, #082244 0%, #1457d9 58%, #0f6b4f 100%);
+  background-position: center, center, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: cover, cover, cover, cover;
+}
+
+.auth-image-panel-login {
+  background-image:
+    linear-gradient(180deg, rgba(7, 22, 46, 0.04), rgba(7, 22, 46, 0.08)),
+    url('/auth-world-cup-login.png');
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  background-size: cover, cover;
+}
+
+.auth-image-panel-register {
+  background-image:
+    linear-gradient(180deg, rgba(7, 22, 46, 0.04), rgba(7, 22, 46, 0.08)),
+    url('/auth-world-cup-register.png');
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  background-size: cover, cover;
+}

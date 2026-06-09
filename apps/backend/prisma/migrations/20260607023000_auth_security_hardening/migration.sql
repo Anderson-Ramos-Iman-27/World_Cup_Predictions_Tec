@@ -1,0 +1,9 @@
+ALTER TABLE "User"
+ADD COLUMN "tokenVersion" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "passwordChangedAt" TIMESTAMP(3);
+
+ALTER TABLE "EmailVerificationCode"
+ADD COLUMN "attempts" INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE "PasswordResetCode"
+ADD COLUMN "attempts" INTEGER NOT NULL DEFAULT 0;
