@@ -17,15 +17,26 @@ import { AuthService } from './auth.service';
       global: true,
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>(
+      useFactory: (configService: ConfigService) => {
+        const jwtSecret = configService.get<string>(
           'JWT_SECRET',
           'change_me_in_real_environment',
-        ),
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '1d'),
-        },
-      }),
+        );
+
+        if (
+          configService.get<string>('NODE_ENV') === 'production' &&
+          jwtSecret === 'change_me_in_real_environment'
+        ) {
+          throw new Error('JWT_SECRET must be configured for production');
+        }
+
+        return {
+          secret: jwtSecret,
+          signOptions: {
+            expiresIn: configService.get<string>('JWT_EXPIRES_IN', '15m'),
+          },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

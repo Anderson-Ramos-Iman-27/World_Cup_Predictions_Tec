@@ -4,8 +4,8 @@ Este archivo se actualizara despues de ejecutar cada prompt para saber exactamen
 
 ## Estado general
 
-- **Prompt actual:** Prompt 20 - Stress testing
-- **Estado del proyecto:** Pruebas backend/frontend organizadas y validadas
+- **Prompt actual:** Prompt 22 - Revision final
+- **Estado del proyecto:** Preparacion de despliegue completada y validada
 - **Ultima actualizacion:** 2026-06-09
 - **Notas generales:** Antes de ejecutar prompts de desarrollo, revisar `descripcion-proyecto.md`, `informe.md`, `plan-desarrollo.md` y `doc/README.md`.
 
@@ -41,8 +41,8 @@ Este archivo se actualizara despues de ejecutar cada prompt para saber exactamen
 | 17 | `doc/prompts/17-frontend-panel-admin.md` | Completado | 2026-06-07 | Dashboard admin, usuarios, salas, partidos, resultados, sync, scoring, carrusel, logs y auditoria |
 | 18 | `doc/prompts/18-documentacion-api-ambiente.md` | Completado | 2026-06-09 | README, docs/api.md y docs/environment.md actualizados |
 | 19 | `doc/prompts/19-pruebas.md` | Completado | 2026-06-09 | Backend Jest, frontend smoke tests, typecheck, builds y escenarios E2E documentados |
-| 20 | `doc/prompts/20-stress-testing.md` | Pendiente | - | Escenarios de carga y stress-testing.md |
-| 21 | `doc/prompts/21-preparacion-despliegue.md` | Pendiente | - | prod compose, deployment.md y checklist |
+| 20 | `doc/prompts/20-stress-testing.md` | Completado | 2026-06-09 | Script de carga, escenarios y docs/stress-testing.md |
+| 21 | `doc/prompts/21-preparacion-despliegue.md` | Completado | 2026-06-09 | Dockerfiles, compose prod, deployment.md, checklist y builds validados |
 | 22 | `doc/prompts/22-revision-final.md` | Pendiente | - | Revision general y cierre |
 
 ## Registro de avances
@@ -238,6 +238,32 @@ Este archivo se actualizara despues de ejecutar cada prompt para saber exactamen
 - Se actualizo `docs/testing.md` con estrategia, resultados y escenarios E2E para usuario, propietario, admin y sincronizacion externa.
 - Se marco el Prompt 19 como completado.
 - El siguiente prompt de implementacion es `doc/prompts/20-stress-testing.md`.
+- Se ejecuto `doc/prompts/20-stress-testing.md`.
+- Se agrego `scripts/stress-test.mjs` como runner de carga sin dependencias externas, basado en Node.js nativo.
+- Se agrego el script raiz `npm run stress:test`.
+- Se cubrieron escenarios de login, listado de partidos, ranking global, podio por sala, salas del usuario, predicciones opcionales y recalculo admin opcional.
+- Se dejo desactivada por defecto la escritura de predicciones y el recalculo admin para proteger ambientes compartidos.
+- Se documento que la sincronizacion real con Football-Data.org no debe incluirse en stress testing automatizado para no saturar servicios externos.
+- Se actualizo `docs/stress-testing.md` con metodologia, variables, comandos, metricas, criterios de aceptacion y resultados esperados.
+- Se ejecuto un smoke local de carga con 2 trabajadores durante 5 segundos: 14 requests, 0 errores, 2.11 req/s.
+- Se marco el Prompt 20 como completado.
+- El siguiente prompt de implementacion es `doc/prompts/21-preparacion-despliegue.md`.
+- Se revalido `doc/prompts/19-pruebas.md` por solicitud del usuario.
+- Se ejecutaron nuevamente backend tests, frontend smoke tests, frontend typecheck, backend build, frontend build y `docker compose config` local/productivo.
+- Resultado de revalidacion Prompt 19: todo correcto; frontend build mantiene solo advertencias conocidas por uso de `<img>`.
+- Se ejecuto `doc/prompts/21-preparacion-despliegue.md`.
+- Se optimizaron Dockerfiles de backend y frontend para usar contexto de monorepo, `npm ci`, builds separados y usuario no root.
+- Se agrego `.dockerignore` raiz para evitar enviar `.env`, `node_modules`, builds, caches y `.git` al contexto Docker.
+- Se actualizo `docker-compose.yml` y `docker-compose.prod.yml` para usar los Dockerfiles desde la raiz del monorepo.
+- Se completo `docker-compose.prod.yml` con healthchecks, variables obligatorias de produccion, CORS, SMTP, Football-Data.org, Redis, PostgreSQL y dependencias saludables.
+- Se reforzo `AuthModule` para fallar en produccion si `JWT_SECRET` conserva el valor por defecto.
+- Se actualizo `.env.example` con variables de dominio, URL publica, JWT, base de datos, Redis, Football-Data.org, SMTP y checklist de produccion.
+- Se mejoro `infra/nginx/nginx.conf` con headers basicos de seguridad, gzip, cache para assets estaticos, timeouts y cabeceras `X-Forwarded-*`.
+- Se completo `docs/deployment.md` con arquitectura, checklist, variables, build, migraciones, seed, Nginx, healthchecks, validaciones y pendientes reales.
+- Se valido `npm run build -w apps/backend`, `npm run typecheck -w apps/frontend`, `npm run build -w apps/frontend`, `docker compose config`, `docker compose -f docker-compose.prod.yml config`, `docker compose --env-file .env.example -f docker-compose.prod.yml config` y `docker compose -f docker-compose.prod.yml build backend frontend`.
+- Se documento como pendiente real revisar avisos de `npm audit`, definir infraestructura/HTTPS/dominio, backups/observabilidad y reemplazar el seed demo si se requiere produccion.
+- Se marco el Prompt 21 como completado.
+- El siguiente prompt de implementacion es `doc/prompts/22-revision-final.md`.
 
 ## Bloqueos actuales
 

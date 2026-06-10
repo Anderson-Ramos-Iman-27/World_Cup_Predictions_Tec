@@ -51,25 +51,45 @@ El frontend esta desarrollado con Next.js App Router, TypeScript y Tailwind CSS.
 
 Rutas implementadas:
 
+- `/`
 - `/login`
 - `/register`
 - `/verify-email`
 - `/forgot-password`
 - `/reset-password`
 - `/dashboard`
+- `/profile`
+- `/rooms`
+- `/rooms/:id`
+- `/matches`
+- `/matches/:id`
+- `/predictions`
+- `/ranking`
+- `/users/:id/predictions`
+- `/groups`
+- `/knockout`
 - `/admin`
 
 Estado actual del frontend:
 
+- Home publica con carrusel configurable desde backend.
 - Layout de autenticacion con panel visual lateral.
 - Imagen diferenciada para login y registro.
 - Formularios con estados de carga, exito y error.
 - Manejo de sesion por cookie HttpOnly.
 - Redireccion segun rol `USER` o `ADMIN`.
-- Rutas privadas base para usuario y administrador.
+- Rutas privadas para usuario y administrador.
 - Medidor de seguridad de contrasena.
 - Mostrar/ocultar contrasena.
 - Reenvio de codigo de verificacion con espera.
+- Dashboard de usuario con accesos a salas, partidos, ranking y predicciones.
+- Perfil editable.
+- Gestion visual de salas: crear, unirse, editar, ver integrantes y podio.
+- Vista de partidos y detalle por partido.
+- Registro de predicciones por modalidad.
+- Vista de mis predicciones con resumen de puntos y bonus.
+- Ranking global y navegacion a historial publico de predicciones por usuario.
+- Panel administrativo completo para usuarios, equipos, partidos, resultados, sincronizacion, auditoria y carrusel.
 
 ## Base de Datos
 
@@ -91,6 +111,7 @@ Modelos principales:
 - `Score`
 - `SyncLog`
 - `AuditLog`
+- `CarouselSlide`
 
 Migraciones relevantes:
 
@@ -98,6 +119,8 @@ Migraciones relevantes:
 - Migracion de codigos de verificacion y recuperacion.
 - Migracion de seguridad de autenticacion: intentos, version de token y cambio de contrasena.
 - Migracion de refresh tokens y logs de seguridad.
+- Migracion de predicciones globales y multiples modalidades por partido.
+- Migracion de diapositivas de carrusel.
 
 ## Seguridad Implementada
 
@@ -153,9 +176,15 @@ Reglas implementadas:
 
 - Resultado exacto: 5 puntos.
 - Ganador correcto o empate correcto: 3 puntos.
-- Diferencia de goles correcta: registrada como motivo del calculo.
+- Diferencia de goles correcta: 2 puntos.
 - Prediccion anticipada: 1 punto extra si se registra con mas de 24 horas.
 - Bonus por racha: 2 puntos extra cada 3 aciertos consecutivos de ganador.
+
+Modalidades implementadas:
+
+- `EXACT_SCORE`: marcador exacto.
+- `WINNER`: ganador o empate.
+- `GOAL_DIFFERENCE`: ganador y diferencia de goles.
 
 El recalculo se ejecuta cuando:
 
@@ -181,10 +210,13 @@ El rol `ADMIN` cuenta con control sobre:
 - usuarios
 - roles
 - estados de cuenta
+- equipos
 - salas
 - partidos
 - resultados manuales
 - recalculo de puntajes
+- sincronizacion con Football-Data.org
+- carrusel de inicio
 - logs de sincronizacion
 - logs de auditoria
 
@@ -244,41 +276,57 @@ El proyecto incluye:
 - Redis.
 - Nginx como reverse proxy.
 - Configuracion preparada para balanceo y despliegue posterior.
+- Validacion de configuracion con `docker compose config`.
 
 ## Validaciones Realizadas
+
+Fecha de ultima validacion: 2026-06-09.
 
 Comandos ejecutados durante la validacion:
 
 ```powershell
-npm run build -w apps/backend
 npm test -w apps/backend -- --runInBand
+npm test -w apps/frontend
+npm run build -w apps/backend
 npm run typecheck -w apps/frontend
+npm run build -w apps/frontend
+docker compose config
+docker compose -f docker-compose.prod.yml config
 ```
 
 Estado actual:
 
 - Backend compila correctamente.
-- Tests backend pasan correctamente.
+- Tests backend pasan correctamente: 10 suites, 40 tests.
+- Smoke tests frontend pasan correctamente: 8 tests.
 - Typecheck frontend pasa correctamente.
+- Build frontend pasa correctamente.
+- Configuracion Docker local y productiva es valida.
 - Migraciones de seguridad aplicadas en PostgreSQL local.
 - Prisma Client regenerado.
 - Backend validado con endpoint de salud.
 
+Advertencias conocidas:
+
+- Next.js muestra advertencias por uso de `<img>` en algunos componentes. No bloquean el build, pero se recomienda migrar a `next/image` para optimizacion de imagenes.
+- El despliegue real en AWS queda fuera del alcance de esta etapa.
+- El archivo `.env` local no esta versionado y debe mantenerse fuera de Git. Antes de produccion se deben rotar/configurar secretos reales y evitar valores por defecto inseguros.
+
 ## Estado Actual
 
-Hasta este punto, la plataforma cuenta con una base backend robusta, autenticacion reforzada, modulos principales implementados, integracion externa, motor de puntuacion, rankings y paneles base de frontend.
+Hasta este punto, la plataforma cuenta con una base backend robusta, autenticacion reforzada, modulos principales implementados, integracion externa, motor de puntuacion, rankings, flujos de usuario completos y panel administrativo funcional.
 
-El siguiente trabajo pendiente esta principalmente en completar las interfaces de usuario:
+El trabajo pendiente se concentra en endurecimiento final, despliegue y pruebas de mayor alcance:
 
-- panel de usuario
-- gestion visual de salas
-- predicciones desde frontend
-- rankings y podios en frontend
-- panel administrativo completo en frontend
-- pruebas end-to-end
-- pruebas de estres
-- documentacion final de API y despliegue
+- Automatizar escenarios E2E con Playwright u otra herramienta equivalente.
+- Ejecutar y documentar pruebas de carga/stress.
+- Completar una guia de despliegue real para produccion.
+- Configurar secretos reales, HTTPS, dominio, CORS productivo, SMTP real y credenciales administradas.
+- Revisar la politica de fallbacks de secretos para que produccion falle si se usan valores por defecto.
+- Optimizar imagenes del frontend para resolver advertencias de Next.js.
 
 ## Conclusion
 
-El avance actual deja la plataforma en un estado solido para continuar con la capa visual y los flujos de usuario. La parte de autenticacion y seguridad ya fue reforzada con controles importantes para una entrega de buen nivel, incluyendo cookies HttpOnly, refresh tokens rotativos, CSRF, rate limiting, logs de seguridad y validaciones fuertes.
+El avance actual deja la plataforma en un estado solido para una entrega funcional: backend, frontend, pruebas principales, builds y configuracion Docker se encuentran validados. La parte de autenticacion y seguridad ya fue reforzada con controles importantes para una entrega de buen nivel, incluyendo cookies HttpOnly, refresh tokens rotativos, CSRF, rate limiting, logs de seguridad y validaciones fuertes.
+
+Para una salida real a produccion, el foco debe moverse desde construccion funcional hacia operacion segura: gestion de secretos, infraestructura administrada, HTTPS, observabilidad, backups, pruebas E2E automatizadas y validacion de carga.

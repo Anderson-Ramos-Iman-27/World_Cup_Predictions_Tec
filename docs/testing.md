@@ -1,6 +1,7 @@
 # Pruebas
 
 Fecha de ultima ejecucion: 2026-06-09.
+Revalidacion ejecutada: 2026-06-09.
 
 ## Alcance
 
@@ -188,5 +189,16 @@ docker compose -f docker-compose.prod.yml config
 ## Resultado de Prompt 19
 
 Estado: completado.
+
+Revalidacion 2026-06-09:
+
+```text
+Backend: 10 suites, 40 tests, 0 fallos.
+Frontend smoke: 8 tests, 0 fallos.
+Frontend typecheck: OK.
+Backend build: OK.
+Frontend build: OK, con advertencias conocidas de <img>.
+Docker compose local/prod: configuracion valida.
+```
 
 Se mantiene pendiente como mejora futura automatizar los escenarios E2E con Playwright y, si se desea mayor cobertura visual, agregar React Testing Library o Playwright Component Testing.
