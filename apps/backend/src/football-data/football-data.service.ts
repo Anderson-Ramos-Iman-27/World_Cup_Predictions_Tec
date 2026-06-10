@@ -19,9 +19,15 @@ export class FootballDataService {
     try {
       const response = await this.footballDataClient.getMatches();
       let finishedMatches = 0;
+      let skippedMatches = 0;
 
       for (const externalMatch of response.matches) {
         const syncedMatch = await this.upsertMatch(externalMatch);
+
+        if (!syncedMatch) {
+          skippedMatches += 1;
+          continue;
+        }
 
         if (syncedMatch.status === MatchStatus.FINISHED) {
           finishedMatches += 1;
@@ -32,13 +38,17 @@ export class FootballDataService {
       const syncLog = await this.prisma.syncLog.create({
         data: {
           provider: 'football-data.org',
-          status: SyncStatus.SUCCESS,
-          message: `Sincronizados ${response.matches.length} partidos`,
+          status: skippedMatches > 0 ? SyncStatus.PARTIAL : SyncStatus.SUCCESS,
+          message:
+            skippedMatches > 0
+              ? `Sincronizados ${response.matches.length - skippedMatches} partidos, ${skippedMatches} omitidos por datos incompletos`
+              : `Sincronizados ${response.matches.length} partidos`,
           startedAt,
           finishedAt: new Date(),
           metadata: {
             totalMatches: response.matches.length,
             finishedMatches,
+            skippedMatches,
           },
         },
       });
@@ -47,6 +57,7 @@ export class FootballDataService {
         status: syncLog.status,
         totalMatches: response.matches.length,
         finishedMatches,
+        skippedMatches,
       };
     } catch (error) {
       const syncLog = await this.prisma.syncLog.create({
@@ -109,6 +120,14 @@ export class FootballDataService {
   }
 
   private async upsertMatch(externalMatch: FootballDataMatch) {
+    if (
+      !externalMatch.id ||
+      !this.isValidTeam(externalMatch.homeTeam) ||
+      !this.isValidTeam(externalMatch.awayTeam)
+    ) {
+      return null;
+    }
+
     const homeTeam = await this.upsertTeam(externalMatch.homeTeam);
     const awayTeam = await this.upsertTeam(externalMatch.awayTeam);
     const status = this.mapStatus(externalMatch.status);
@@ -140,19 +159,23 @@ export class FootballDataService {
 
   private async upsertTeam(team: FootballDataMatch['homeTeam']) {
     return this.prisma.team.upsert({
-      where: { externalId: team.id },
+      where: { externalId: team.id as number },
       update: {
-        name: team.name,
+        name: team.name as string,
         shortName: team.shortName ?? team.tla,
         crestUrl: team.crest,
       },
       create: {
-        externalId: team.id,
-        name: team.name,
+        externalId: team.id as number,
+        name: team.name as string,
         shortName: team.shortName ?? team.tla,
         crestUrl: team.crest,
       },
     });
+  }
+
+  private isValidTeam(team: FootballDataMatch['homeTeam']) {
+    return Boolean(team?.id && team.name);
   }
 
   private mapStatus(status: string): MatchStatus {

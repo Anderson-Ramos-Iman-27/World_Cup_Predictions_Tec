@@ -1,13 +1,13 @@
 export type FootballDataTeam = {
-  id: number;
-  name: string;
+  id: number | null;
+  name: string | null;
   shortName?: string;
   tla?: string;
   crest?: string;
 };
 
 export type FootballDataMatch = {
-  id: number;
+  id: number | null;
   utcDate: string;
   status: string;
   stage?: string;

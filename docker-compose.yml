@@ -4,12 +4,21 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+    restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - app-network
 
@@ -21,52 +30,88 @@ services:
       NODE_ENV: development
       API_PREFIX: ${API_PREFIX:-api}
       BACKEND_PORT: 3001
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/world_cup_predictions?schema=public}
+      BOOTSTRAP_ADMIN: "true"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      JWT_SECRET: ${JWT_SECRET:-change_me_in_real_environment}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
       FOOTBALL_DATA_API_URL: ${FOOTBALL_DATA_API_URL:-https://api.football-data.org/v4}
-      FOOTBALL_DATA_API_KEY: ${FOOTBALL_DATA_API_KEY:-replace_with_api_key}
+      FOOTBALL_DATA_API_KEY: ${FOOTBALL_DATA_API_KEY:?FOOTBALL_DATA_API_KEY is required}
+      FOOTBALL_DATA_ALLOW_INSECURE_TLS: ${FOOTBALL_DATA_ALLOW_INSECURE_TLS:-false}
+      FOOTBALL_DATA_COMPETITION: ${FOOTBALL_DATA_COMPETITION:-WC}
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST is required}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:?SMTP_FROM is required}
+      EMAIL_CODE_EXPIRES_MINUTES: ${EMAIL_CODE_EXPIRES_MINUTES:-15}
+    restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - app-network
 
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-world_cup_predictions}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - app-network
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - app-network
 
   nginx:
     image: nginx:1.27-alpine
+    restart: unless-stopped
     ports:
       - "${NGINX_PORT:-80}:80"
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     networks:
       - app-network
 

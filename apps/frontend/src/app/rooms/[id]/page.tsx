@@ -25,6 +25,7 @@ export default function RoomDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [overlayMessage, setOverlayMessage] = useState('');
   const [memberToRemove, setMemberToRemove] = useState<RoomMember | null>(null);
+  const [copiedRoomCode, setCopiedRoomCode] = useState(false);
   const [roomForm, setRoomForm] = useState({
     color: '#1457d9',
     description: '',
@@ -141,6 +142,20 @@ export default function RoomDetailPage() {
     }
   }
 
+  async function handleCopyRoomCode() {
+    if (!room?.code || !navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(room.code);
+      setCopiedRoomCode(true);
+      window.setTimeout(() => setCopiedRoomCode(false), 1600);
+    } catch {
+      setError('No se pudo copiar el codigo de la sala');
+    }
+  }
+
   return (
     <PrivateRoute>
       <AppShell
@@ -177,9 +192,24 @@ export default function RoomDetailPage() {
               <div className="p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.22em] text-action">
-                      Codigo {room.code}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-action">
+                        Codigo {room.code}
+                      </p>
+                      <button
+                        aria-label="Copiar codigo de la sala"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-action/20 bg-white text-action transition hover:border-action hover:bg-action/10"
+                        type="button"
+                        onClick={handleCopyRoomCode}
+                        title={copiedRoomCode ? 'Codigo copiado' : 'Copiar codigo'}
+                      >
+                        {copiedRoomCode ? (
+                          <CheckIcon />
+                        ) : (
+                          <CopyIcon />
+                        )}
+                      </button>
+                    </div>
                     <h2 className="mt-3 text-2xl font-black text-ink">{room.name}</h2>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                       {room.description || 'Sala sin descripcion.'}
@@ -401,5 +431,40 @@ function LoadingOverlay({ message }: { message: string }) {
         </p>
       </div>
     </div>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="14" viewBox="0 0 14 14" width="14">
+      <path
+        d="M4.5 4.5h-2A1.5 1.5 0 0 0 1 6v5.5A1.5 1.5 0 0 0 2.5 13H8A1.5 1.5 0 0 0 9.5 11.5v-2"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.4"
+      />
+      <path
+        d="M6 1h5.5A1.5 1.5 0 0 1 13 2.5V8A1.5 1.5 0 0 1 11.5 9.5H6A1.5 1.5 0 0 1 4.5 8V2.5A1.5 1.5 0 0 1 6 1Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.4"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="14" viewBox="0 0 14 14" width="14">
+      <path
+        d="M11.5 3.75 6 9.25 2.5 5.75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
   );
 }

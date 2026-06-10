@@ -26,6 +26,12 @@ export class EmailService {
     );
 
     const content = this.buildCodeEmail({ code, purpose });
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    const allowInsecureTls =
+      this.configService.get<string>(
+        'SMTP_ALLOW_INSECURE_TLS',
+        isProduction ? 'false' : 'true',
+      ) === 'true';
 
     if (!host) {
       this.logger.warn(
@@ -35,26 +41,44 @@ export class EmailService {
     }
 
     const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      ...(user && pass
-        ? {
-            auth: {
-              user,
-              pass,
+        host,
+        port,
+        secure: port === 465,
+        requireTLS: port !== 465,
+        tls: allowInsecureTls
+          ? {
+              rejectUnauthorized: false,
+            }
+          : undefined,
+        ...(user && pass
+          ? {
+              auth: {
+                user,
+                pass,
             },
           }
         : {}),
     });
 
-    await transporter.sendMail({
-      from,
-      to,
-      subject,
-      text: content.text,
-      html: content.html,
-    });
+    try {
+      await transporter.sendMail({
+        from,
+        to,
+        subject,
+        text: content.text,
+        html: content.html,
+      });
+    } catch (error) {
+      if (isProduction) {
+        throw error;
+      }
+
+      this.logger.warn(
+        `Email delivery failed for ${purpose} code to ${to}. Falling back to log output.`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      this.logger.warn(`Development ${purpose} code for ${to}: ${code}`);
+    }
   }
 
   private buildCodeEmail({

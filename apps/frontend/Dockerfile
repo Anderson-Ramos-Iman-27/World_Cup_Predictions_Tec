@@ -13,14 +13,15 @@ WORKDIR /app/apps/frontend
 RUN npm run build
 
 FROM node:22-alpine AS runner
-WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
-COPY --from=build /app/apps/frontend/.next/standalone ./
-COPY --from=build /app/apps/frontend/.next/static ./apps/frontend/.next/static
-COPY --from=build /app/apps/frontend/public ./apps/frontend/public
 WORKDIR /app/apps/frontend
+COPY --from=build /app/apps/frontend/.next/standalone/. ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/frontend/.next/static ./.next/static
+COPY --from=build /app/apps/frontend/public ./public
 USER nextjs
 EXPOSE 3000
 CMD ["node", "server.js"]
