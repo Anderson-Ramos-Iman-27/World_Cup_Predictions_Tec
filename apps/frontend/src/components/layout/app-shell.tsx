@@ -103,7 +103,7 @@ export function AppShell({ title, subtitle, children, heroContent }: AppShellPro
                 <div className="flex items-center gap-3 pt-1">
                   <Link
                     aria-current={pathname.startsWith('/profile') ? 'page' : undefined}
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-black shadow-[0_10px_22px_rgba(20,87,217,0.28)] transition ${
+                    className={`inline-flex h-10 items-center gap-2 rounded-full px-3 pr-4 font-black shadow-[0_10px_22px_rgba(20,87,217,0.28)] transition ${
                       pathname.startsWith('/profile')
                         ? 'bg-white text-[#082442] ring-2 ring-action'
                         : 'bg-action text-white'
@@ -112,7 +112,16 @@ export function AppShell({ title, subtitle, children, heroContent }: AppShellPro
                     title="Perfil"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    {user.name.slice(0, 1).toUpperCase()}
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-black ${
+                        pathname.startsWith('/profile')
+                          ? 'bg-action text-white'
+                          : 'bg-white/15 text-white'
+                      }`}
+                    >
+                      {user.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="text-sm font-black leading-none">Perfil</span>
                   </Link>
                   <button
                     className="flex-1 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-blue-100 transition hover:bg-white/10 hover:text-white"
