@@ -78,19 +78,19 @@ export class AuthController {
     response.clearCookie('wcpp_session', {
       httpOnly: true,
       sameSite: 'lax',
-      secure: this.isProduction(),
+      secure: this.areAuthCookiesSecure(),
       path: '/',
     });
     response.clearCookie('wcpp_refresh', {
       httpOnly: true,
       sameSite: 'lax',
-      secure: this.isProduction(),
+      secure: this.areAuthCookiesSecure(),
       path: '/api/auth/refresh',
     });
     response.clearCookie('wcpp_csrf', {
       httpOnly: false,
       sameSite: 'lax',
-      secure: this.isProduction(),
+      secure: this.areAuthCookiesSecure(),
       path: '/',
     });
 
@@ -113,21 +113,21 @@ export class AuthController {
     response.cookie('wcpp_session', accessToken, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: this.isProduction(),
+      secure: this.areAuthCookiesSecure(),
       path: '/',
       maxAge: 15 * 60 * 1000,
     });
     response.cookie('wcpp_refresh', refreshToken, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: this.isProduction(),
+      secure: this.areAuthCookiesSecure(),
       path: '/api/auth/refresh',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     response.cookie('wcpp_csrf', csrfToken, {
       httpOnly: false,
       sameSite: 'lax',
-      secure: this.isProduction(),
+      secure: this.areAuthCookiesSecure(),
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -143,5 +143,19 @@ export class AuthController {
 
   private isProduction() {
     return this.configService.get<string>('NODE_ENV') === 'production';
+  }
+
+  private areAuthCookiesSecure() {
+    const configuredValue = this.configService.get<string>('AUTH_COOKIE_SECURE');
+
+    if (configuredValue === 'true') {
+      return true;
+    }
+
+    if (configuredValue === 'false') {
+      return false;
+    }
+
+    return this.isProduction();
   }
 }
