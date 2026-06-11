@@ -28,15 +28,15 @@ export function MatchCard({ match, href, onNavigate }: MatchCardProps) {
         <span>{open ? 'Predicciones abiertas' : isFinished ? 'Full time' : 'Fixture'}</span>
       </div>
       <div className="p-5">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-4">
           <TeamBadge name={match.homeTeam.name} crestUrl={match.homeTeam.crestUrl} />
-          <div className="min-w-20 rounded-xl bg-slate-50 px-4 py-3 text-center">
+          <div className="min-w-0 rounded-xl bg-slate-50 px-4 py-3 text-center md:min-w-20">
             {isFinished || isLive ? (
-              <p className="text-2xl font-black text-ink">
+              <p className="text-xl font-black text-ink sm:text-2xl">
                 {match.homeScore ?? '-'} - {match.awayScore ?? '-'}
               </p>
             ) : (
-              <p className="text-xl font-black text-ink">VS</p>
+              <p className="text-lg font-black text-ink sm:text-xl">VS</p>
             )}
             <p className="mt-1 text-xs font-semibold text-slate-500">
               {new Date(match.utcDate).toLocaleDateString('es-PE')}

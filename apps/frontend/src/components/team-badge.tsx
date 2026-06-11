@@ -10,7 +10,9 @@ export function TeamBadge({ name, crestUrl, align = 'left' }: TeamBadgeProps) {
   return (
     <div
       className={`flex items-center gap-3 ${
-        align === 'right' ? 'flex-row-reverse text-right' : 'text-left'
+        align === 'right'
+          ? 'flex-row-reverse text-right'
+          : 'text-left'
       }`}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-50">
@@ -28,7 +30,9 @@ export function TeamBadge({ name, crestUrl, align = 'left' }: TeamBadgeProps) {
           </span>
         )}
       </div>
-      <span className="min-w-0 text-sm font-black text-ink">{name}</span>
+      <span className="min-w-0 text-sm font-black leading-snug text-ink sm:text-base">
+        {name}
+      </span>
     </div>
   );
 }
