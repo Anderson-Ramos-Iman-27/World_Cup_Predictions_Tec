@@ -15,6 +15,14 @@ type RankedPrediction = {
   } | null;
 };
 
+type RoomScoredPrediction = {
+  userId: string;
+  submittedAt: Date;
+  score: {
+    totalPoints: number;
+  } | null;
+};
+
 type RoomRankingMember = {
   userId: string;
   user: {
@@ -106,7 +114,7 @@ export class RankingsService {
       include: {
         score: true,
       },
-    })) as Array<RankedPrediction & { userId: string }>;
+    })) as RoomScoredPrediction[];
 
     const pointsByUser = new Map<
       string,
