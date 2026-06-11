@@ -132,7 +132,7 @@ export default function KnockoutPage() {
       ) : null}
 
       {matches.length > 0 ? (
-        <section className="relative left-1/2 w-screen -translate-x-1/2 overflow-x-auto border-y border-slate-200 bg-[#eef3f8] px-6 py-7 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
+        <section className="-mx-5 overflow-x-auto border-y border-slate-200 bg-[#eef3f8] px-5 py-7 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
           <div className="pb-3">
             <div ref={bracketRef} className="relative mx-auto min-h-[1180px] min-w-[2100px]">
               <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
@@ -157,13 +157,11 @@ export default function KnockoutPage() {
                     </header>
                     <div
                       className={`flex flex-1 flex-col gap-5 ${
-                        stage.key === 'FINAL'
-                          ? 'justify-start pt-8'
-                          : 'justify-around'
+                        stage.key === 'FINAL' ? 'justify-center' : 'justify-around'
                       }`}
                     >
                       {stage.key === 'FINAL' ? (
-                        <div className="mb-4 flex items-center justify-center">
+                        <div className="mb-2 flex items-center justify-center">
                           <Image
                             alt="Copa del mundo"
                             className="h-28 w-auto object-contain sm:h-32 md:h-44"
