@@ -70,6 +70,31 @@ export function AppShell({ title, subtitle, children, heroContent }: AppShellPro
                 {links.map((link) => {
                   const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
 
+                  if (link.href === '/profile') {
+                    return (
+                      <Link
+                        aria-current={active ? 'page' : undefined}
+                        className={`relative inline-flex items-center gap-2 rounded-xl px-3 py-2 font-bold transition ${
+                          active
+                            ? 'bg-white text-[#082442] shadow-[0_10px_22px_rgba(255,255,255,0.16)] after:absolute after:bottom-1 after:left-1/2 after:h-1 after:w-6 after:-translate-x-1/2 after:rounded-full after:bg-action'
+                            : 'text-blue-200 hover:bg-white/10 hover:text-white'
+                        }`}
+                        href={link.href}
+                        key={link.href}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <span
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${
+                            active ? 'bg-action text-white' : 'bg-white/15 text-white'
+                          }`}
+                        >
+                          {user.name.slice(0, 1).toUpperCase()}
+                        </span>
+                        <span>{link.label}</span>
+                      </Link>
+                    );
+                  }
+
                   return (
                     <Link
                       aria-current={active ? 'page' : undefined}
@@ -101,28 +126,6 @@ export function AppShell({ title, subtitle, children, heroContent }: AppShellPro
                   </Link>
                 ) : null}
                 <div className="flex items-center gap-3 pt-1">
-                  <Link
-                    aria-current={pathname.startsWith('/profile') ? 'page' : undefined}
-                    className={`inline-flex h-10 items-center gap-2 rounded-full px-3 pr-4 font-black shadow-[0_10px_22px_rgba(20,87,217,0.28)] transition ${
-                      pathname.startsWith('/profile')
-                        ? 'bg-white text-[#082442] ring-2 ring-action'
-                        : 'bg-action text-white'
-                    }`}
-                    href="/profile"
-                    title="Perfil"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-black ${
-                        pathname.startsWith('/profile')
-                          ? 'bg-action text-white'
-                          : 'bg-white/15 text-white'
-                      }`}
-                    >
-                      {user.name.slice(0, 1).toUpperCase()}
-                    </span>
-                    <span className="text-sm font-black leading-none">Perfil</span>
-                  </Link>
                   <button
                     className="flex-1 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-blue-100 transition hover:bg-white/10 hover:text-white"
                     type="button"
