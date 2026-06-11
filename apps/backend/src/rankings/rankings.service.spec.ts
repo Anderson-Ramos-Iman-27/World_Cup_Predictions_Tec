@@ -5,10 +5,11 @@ describe('RankingsService', () => {
     prediction: {
       findMany: jest.fn(),
     },
-    room: {
+    user: {
+      findMany: jest.fn(),
       findUnique: jest.fn(),
     },
-    user: {
+    room: {
       findUnique: jest.fn(),
     },
   };
@@ -27,10 +28,14 @@ describe('RankingsService', () => {
   });
 
   it('builds global ranking by summing all scored predictions', async () => {
-    prisma.prediction.findMany.mockResolvedValue([
-      prediction('user-1', 'Ana', 5, '2026-06-10T10:00:00.000Z'),
-      prediction('user-1', 'Ana', 3, '2026-06-10T11:00:00.000Z'),
-      prediction('user-2', 'Luis', 10, '2026-06-10T12:00:00.000Z'),
+    prisma.user.findMany.mockResolvedValue([
+      userWithPredictions('user-1', 'Ana', [
+        userPrediction(5, '2026-06-10T10:00:00.000Z'),
+        userPrediction(3, '2026-06-10T11:00:00.000Z'),
+      ]),
+      userWithPredictions('user-2', 'Luis', [
+        userPrediction(10, '2026-06-10T12:00:00.000Z'),
+      ]),
     ]);
 
     await expect(service.getGlobalRanking()).resolves.toEqual([
@@ -71,7 +76,7 @@ describe('RankingsService', () => {
     await expect(service.getGlobalRanking()).resolves.toMatchObject([
       { userId: 'cached-user', totalPoints: 99 },
     ]);
-    expect(prisma.prediction.findMany).not.toHaveBeenCalled();
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
   });
 
   it('builds room ranking with members that have zero points', async () => {
@@ -96,9 +101,13 @@ describe('RankingsService', () => {
   });
 
   it('breaks ties by earliest prediction time instead of name', async () => {
-    prisma.prediction.findMany.mockResolvedValue([
-      prediction('user-1', 'Zoe', 5, '2026-06-10T09:00:00.000Z'),
-      prediction('user-2', 'Ana', 5, '2026-06-10T10:00:00.000Z'),
+    prisma.user.findMany.mockResolvedValue([
+      userWithPredictions('user-1', 'Zoe', [
+        userPrediction(5, '2026-06-10T09:00:00.000Z'),
+      ]),
+      userWithPredictions('user-2', 'Ana', [
+        userPrediction(5, '2026-06-10T10:00:00.000Z'),
+      ]),
     ]);
 
     await expect(service.getGlobalRanking()).resolves.toEqual([
@@ -179,20 +188,23 @@ describe('RankingsService', () => {
     ]);
   });
 
-  function prediction(
+  function userWithPredictions(
     userId: string,
     name: string,
-    totalPoints: number,
-    submittedAt: string,
+    predictions: Array<{ submittedAt: Date; score: { totalPoints: number } | null }>,
   ) {
     return {
       userId,
+      id: userId,
+      name,
+      email: `${userId}@example.com`,
+      predictions,
+    };
+  }
+
+  function userPrediction(totalPoints: number, submittedAt: string) {
+    return {
       submittedAt: new Date(submittedAt),
-      user: {
-        id: userId,
-        name,
-        email: `${userId}@example.com`,
-      },
       score: {
         totalPoints,
       },

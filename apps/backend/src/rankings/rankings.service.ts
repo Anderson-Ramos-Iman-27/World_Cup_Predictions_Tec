@@ -23,6 +23,20 @@ type RoomScoredPrediction = {
   } | null;
 };
 
+type GlobalUserPrediction = {
+  submittedAt: Date;
+  score: {
+    totalPoints: number;
+  } | null;
+};
+
+type GlobalRankingUser = {
+  id: string;
+  name: string;
+  email: string;
+  predictions: GlobalUserPrediction[];
+};
+
 type RoomRankingMember = {
   userId: string;
   user: {
@@ -58,25 +72,56 @@ export class RankingsService {
       return cached;
     }
 
-    const predictions = (await this.prisma.prediction.findMany({
+    const users = await this.prisma.user.findMany({
       where: {
-        roomId: null,
-        score: { isNot: null },
+        role: {
+          not: 'ADMIN',
+        },
       },
-      include: {
-        user: true,
-        score: true,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        predictions: {
+          where: {
+            roomId: null,
+            score: {
+              isNot: null,
+            },
+          },
+          select: {
+            submittedAt: true,
+            score: {
+              select: {
+                totalPoints: true,
+              },
+            },
+          },
+          orderBy: {
+            submittedAt: 'asc',
+          },
+        },
       },
-    })) as RankedPrediction[];
+    });
 
-    const ranking = this.buildRanking(
-      predictions.map((prediction) => ({
-        userId: prediction.userId,
-        name: prediction.user.name,
-        email: prediction.user.email,
-        points: prediction.score?.totalPoints ?? 0,
-        firstPredictionAt: prediction.submittedAt,
-      })),
+    const ranking = this.positionRanking(
+      (users as GlobalRankingUser[]).map((user) => {
+        const scoredPredictions = user.predictions as GlobalUserPrediction[];
+        const firstPredictionAt = scoredPredictions[0]?.submittedAt ?? null;
+        const totalPoints = scoredPredictions.reduce(
+          (total, prediction) => total + (prediction.score?.totalPoints ?? 0),
+          0,
+        );
+
+        return {
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          totalPoints,
+          predictionsCount: scoredPredictions.length,
+          firstPredictionAt: firstPredictionAt?.toISOString() ?? null,
+        };
+      }),
     );
 
     await this.cacheService.setJson(cacheKey, ranking, this.cacheTtlSeconds);
@@ -308,7 +353,7 @@ export class RankingsService {
       name: string;
       email: string;
       points: number;
-      firstPredictionAt: Date;
+      firstPredictionAt: Date | null;
     }>,
   ) {
     const grouped = new Map<
@@ -328,8 +373,11 @@ export class RankingsService {
 
       current.totalPoints += entry.points;
       current.predictionsCount += 1;
-      const entryTimestamp = entry.firstPredictionAt.toISOString();
-      if (!current.firstPredictionAt || entryTimestamp < current.firstPredictionAt) {
+      const entryTimestamp = entry.firstPredictionAt?.toISOString() ?? null;
+      if (
+        entryTimestamp &&
+        (!current.firstPredictionAt || entryTimestamp < current.firstPredictionAt)
+      ) {
         current.firstPredictionAt = entryTimestamp;
       }
       grouped.set(entry.userId, current);

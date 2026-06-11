@@ -76,9 +76,16 @@ export default function RankingPage() {
       title="Ranking global"
       subtitle="Compara el rendimiento acumulado de todos los participantes."
     >
+      {isLoading ? <LoadingOverlay message="Cargando clasificación..." /> : null}
       {error ? (
         <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
           {error}
+        </div>
+      ) : null}
+
+      {!isLoading && ranking.length > 0 ? (
+        <div className="mb-6">
+          <RankingPodium entries={ranking.slice(0, 3)} />
         </div>
       ) : null}
 
@@ -86,13 +93,18 @@ export default function RankingPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <label className="block w-full max-w-xl">
             <span className="text-sm font-black text-ink">Buscar participante</span>
-            <input
-              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-ink shadow-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
-              placeholder="Filtra por nombre o correo"
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
+            <div className="relative mt-2">
+              <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
+                <SearchIcon />
+              </span>
+              <input
+                className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-ink shadow-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
+                placeholder="Filtra por nombre o correo"
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </div>
           </label>
 
           <div className="flex flex-wrap gap-3">
@@ -114,12 +126,6 @@ export default function RankingPage() {
         </div>
       </section>
 
-      {!isLoading && ranking.length > 0 ? (
-        <div className="mb-6">
-          <RankingPodium entries={ranking.slice(0, 3)} />
-        </div>
-      ) : null}
-
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
         <div className="grid grid-cols-[70px_1fr_90px_100px_130px] gap-3 border-b border-white/10 bg-[#082442] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-blue-200">
           <span>Pos.</span>
@@ -128,9 +134,6 @@ export default function RankingPage() {
           <span className="text-right">Puntos</span>
           <span className="text-right">Detalle</span>
         </div>
-        {isLoading ? (
-          <p className="px-5 py-4 text-sm text-slate-500">Cargando...</p>
-        ) : null}
         {!isLoading && filteredRanking.length === 0 ? (
           <p className="px-5 py-4 text-sm text-slate-500">No se encontraron resultados.</p>
         ) : null}
@@ -192,5 +195,40 @@ export default function RankingPage() {
         </div>
       ) : null}
     </AppShell>
+  );
+}
+
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
+        <p className="mt-4 text-base font-black text-ink">{message}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Preparando la informacion.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
+      <path
+        d="M9.167 15.833A6.667 6.667 0 1 0 9.167 2.5a6.667 6.667 0 0 0 0 13.333Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.75"
+      />
+      <path
+        d="m14.167 14.167 3.333 3.333"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.75"
+      />
+    </svg>
   );
 }
