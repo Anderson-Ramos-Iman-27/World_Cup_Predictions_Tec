@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { RankingEntry } from '@/features/user-panel/types';
 
 export function RankingPodium({ entries }: { entries: RankingEntry[] }) {
-  const topThree = [entries[1], entries[0], entries[2]].filter(Boolean);
+  const topThree = [entries[0], entries[1], entries[2]].filter(Boolean);
 
   if (topThree.length === 0) {
     return (
@@ -26,14 +26,14 @@ export function RankingPodium({ entries }: { entries: RankingEntry[] }) {
 function PodiumCard({ entry }: { entry: RankingEntry }) {
   const isFirst = entry.position === 1;
   const classes = isFirst
-    ? 'min-h-72 bg-gradient-to-br from-[#f7c948] via-[#e9a80a] to-[#c98500] text-white md:order-2'
+    ? 'min-h-72 bg-gradient-to-br from-[#f7c948] via-[#e9a80a] to-[#c98500] text-white lg:order-2'
     : entry.position === 2
-      ? 'min-h-60 bg-gradient-to-br from-[#cdd5df] via-[#aeb8c5] to-[#8793a3] text-white md:order-1'
-      : 'min-h-60 bg-gradient-to-br from-[#d96a2b] via-[#c53f08] to-[#922400] text-white md:order-3';
+      ? 'min-h-60 bg-gradient-to-br from-[#cdd5df] via-[#aeb8c5] to-[#8793a3] text-white lg:order-1'
+      : 'min-h-60 bg-gradient-to-br from-[#d96a2b] via-[#c53f08] to-[#922400] text-white lg:order-3';
 
   return (
     <Link
-      className={`relative overflow-hidden rounded-2xl p-6 shadow-[0_18px_34px_rgba(15,35,66,0.18)] ${classes}`}
+      className={`relative overflow-hidden rounded-2xl p-5 sm:p-6 shadow-[0_18px_34px_rgba(15,35,66,0.18)] ${classes}`}
       href={`/users/${entry.userId}/predictions`}
     >
       <div className="absolute right-5 top-5 rounded-full bg-white/20 px-3 py-1 text-sm font-black">

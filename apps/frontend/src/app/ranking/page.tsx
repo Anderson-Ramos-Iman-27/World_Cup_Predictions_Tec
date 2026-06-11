@@ -127,7 +127,7 @@ export default function RankingPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
-        <div className="grid grid-cols-[70px_1fr_90px_100px_130px] gap-3 border-b border-white/10 bg-[#082442] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-blue-200">
+        <div className="hidden lg:grid grid-cols-[70px_minmax(0,1fr)_90px_100px_130px] gap-3 border-b border-white/10 bg-[#082442] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-blue-200">
           <span>Pos.</span>
           <span>Participante</span>
           <span className="text-right">Pred.</span>
@@ -137,36 +137,84 @@ export default function RankingPage() {
         {!isLoading && filteredRanking.length === 0 ? (
           <p className="px-5 py-4 text-sm text-slate-500">No se encontraron resultados.</p>
         ) : null}
-        {pageEntries.map((entry) => (
-          <div
-            className={`grid grid-cols-[70px_1fr_90px_100px_130px] gap-3 px-5 py-4 text-sm ${
-              entry.userId === user?.id ? 'bg-blue-50' : 'bg-white'
-            }`}
-            id={`ranking-row-${entry.userId}`}
-            key={entry.userId}
-          >
-            <span className="font-black text-ink">#{entry.position}</span>
-            <Link
-              className="block rounded-lg px-2 py-1 transition hover:bg-blue-50"
-              href={`/users/${entry.userId}/predictions`}
+
+        <div className="lg:hidden divide-y divide-slate-100">
+          {pageEntries.map((entry) => (
+            <article
+              className={`px-5 py-4 ${entry.userId === user?.id ? 'bg-blue-50' : 'bg-white'}`}
+              id={`ranking-row-${entry.userId}`}
+              key={entry.userId}
             >
-              <strong className="block text-ink">{entry.name}</strong>
-              <span className="text-xs text-slate-500">{entry.email}</span>
-            </Link>
-            <span className="text-right font-semibold text-slate-600">
-              {entry.predictionsCount}
-            </span>
-            <span className="text-right font-black text-action">
-              {entry.totalPoints}
-            </span>
-            <Link
-              className="text-right text-sm font-black text-action hover:text-[#0b4cc4]"
-              href={`/users/${entry.userId}/predictions`}
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                    Pos. #{entry.position}
+                  </p>
+                  <Link
+                    className="mt-1 block min-w-0 rounded-lg py-1 transition hover:text-action"
+                    href={`/users/${entry.userId}/predictions`}
+                  >
+                    <strong className="block break-words text-base font-black text-ink">
+                      {entry.name}
+                    </strong>
+                    <span className="block break-words text-xs text-slate-500">
+                      {entry.email}
+                    </span>
+                  </Link>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                    Puntos
+                  </p>
+                  <p className="mt-1 text-lg font-black text-action">{entry.totalPoints}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <MetricBox label="Predicciones" value={entry.predictionsCount} />
+                <Link
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-50 px-3 py-3 text-sm font-black text-action transition hover:bg-blue-100"
+                  href={`/users/${entry.userId}/predictions`}
+                >
+                  Ver predicciones
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="hidden lg:block">
+          {pageEntries.map((entry) => (
+            <div
+              className={`grid grid-cols-[70px_minmax(0,1fr)_90px_100px_130px] gap-3 px-5 py-4 text-sm ${
+                entry.userId === user?.id ? 'bg-blue-50' : 'bg-white'
+              }`}
+              id={`ranking-row-${entry.userId}`}
+              key={entry.userId}
             >
-              Ver predicciones
-            </Link>
-          </div>
-        ))}
+              <span className="font-black text-ink">#{entry.position}</span>
+              <Link
+                className="block min-w-0 rounded-lg px-2 py-1 transition hover:bg-blue-50"
+                href={`/users/${entry.userId}/predictions`}
+              >
+                <strong className="block truncate text-ink">{entry.name}</strong>
+                <span className="block truncate text-xs text-slate-500">{entry.email}</span>
+              </Link>
+              <span className="text-right font-semibold text-slate-600">
+                {entry.predictionsCount}
+              </span>
+              <span className="text-right font-black text-action">
+                {entry.totalPoints}
+              </span>
+              <Link
+                className="text-right text-sm font-black text-action hover:text-[#0b4cc4]"
+                href={`/users/${entry.userId}/predictions`}
+              >
+                Ver predicciones
+              </Link>
+            </div>
+          ))}
+        </div>
       </section>
 
       {totalPages > 1 ? (
@@ -230,5 +278,16 @@ function SearchIcon() {
         strokeWidth="1.75"
       />
     </svg>
+  );
+}
+
+function MetricBox({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl bg-slate-50 px-3 py-3 text-center">
+      <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-base font-black text-ink">{value}</p>
+    </div>
   );
 }
