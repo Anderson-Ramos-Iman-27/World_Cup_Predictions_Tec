@@ -88,7 +88,7 @@ export default function ProfilePage() {
     setError('');
     setSuccess('');
     setIsCodeSending(true);
-    setOverlayMessage('Enviando codigo de seguridad...');
+    setOverlayMessage('Enviando código de seguridad...');
 
     try {
       const response = await apiRequest<{ message: string }>('/auth/forgot-password', {

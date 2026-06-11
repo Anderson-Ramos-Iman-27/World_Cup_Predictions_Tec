@@ -275,14 +275,14 @@ function getBonusDetail(prediction: Prediction) {
   const bonusPoints = prediction.score.bonusPoints ?? 0;
 
   if (bonusPoints <= 0) {
-    return 'Esta prediccion no obtuvo bonus. Puede ganar bonus por registrarse con mas de 24 horas de anticipacion o por racha de aciertos.';
+    return 'Esta predicción no obtuvo bonus. Puede ganar bonus por registrarse con mas de 24 horas de anticipacion o por racha de aciertos.';
   }
 
   const reason = (prediction.score.reason ?? '').toLowerCase();
   const details: string[] = [];
 
   if (reason.includes('anticipada')) {
-    details.push('Prediccion anticipada: +1 punto por registrarla con mas de 24 horas de anticipacion.');
+    details.push('Predicción anticipada: +1 punto por registrarla con mas de 24 horas de anticipacion.');
   }
 
   if (reason.includes('racha')) {
@@ -369,7 +369,7 @@ function getPredictionAuditLabel(prediction: Prediction) {
 
 function normalizeReason(reason: string) {
   return reason
-    .replace('prediccion anticipada', 'predicción anticipada')
+    .replace('predicción anticipada', 'predicción anticipada')
     .replace('bonus por racha', 'bonus por racha')
     .replace('resultado exacto', 'resultado exacto')
     .replace('ganador correcto', 'ganador correcto')

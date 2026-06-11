@@ -25,7 +25,7 @@ export function AppShell({ title, subtitle, children, heroContent }: AppShellPro
     { href: '/knockout', label: 'Eliminatorias' },
     { href: '/rooms', label: 'Salas' },
     { href: '/predictions', label: 'Predicciones' },
-    { href: '/ranking', label: 'Clasificacion' },
+    { href: '/ranking', label: 'Clasificación' },
     { href: '/profile', label: 'Perfil' },
   ];
   const publicLinks = [
@@ -33,7 +33,7 @@ export function AppShell({ title, subtitle, children, heroContent }: AppShellPro
     { href: '/matches', label: 'Partidos' },
     { href: '/groups', label: 'Grupos' },
     { href: '/knockout', label: 'Eliminatorias' },
-    { href: '/ranking', label: 'Clasificacion' },
+    { href: '/ranking', label: 'Clasificación' },
   ];
   const heroImage = getHeroImage(pathname);
 

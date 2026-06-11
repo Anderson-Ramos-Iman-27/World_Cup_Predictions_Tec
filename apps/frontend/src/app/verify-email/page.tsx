@@ -61,7 +61,7 @@ function VerifyEmailForm() {
     )?.value;
 
     if (!currentEmail) {
-      setError('Ingresa tu correo para reenviar el codigo.');
+      setError('Ingresa tu correo para reenviar el código.');
       return;
     }
 
@@ -74,7 +74,7 @@ function VerifyEmailForm() {
       setSuccess(message);
       setResendSeconds(60);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'No se pudo reenviar el codigo');
+      setError(error instanceof Error ? error.message : 'No se pudo reenviar el código');
     } finally {
       setIsResending(false);
     }
@@ -83,7 +83,7 @@ function VerifyEmailForm() {
   return (
     <AuthShell
       title="Verifica tu correo"
-      subtitle="Ingresa el codigo enviado a tu correo para activar tu cuenta."
+      subtitle="Ingresa el código enviado a tu correo para activar tu cuenta."
       footerText="Ya verificaste tu cuenta?"
       footerHref="/login"
       footerAction="Iniciar sesion"
@@ -102,7 +102,7 @@ function VerifyEmailForm() {
           defaultValue={email}
         />
         <FormField
-          label="Codigo"
+          label="Código"
           name="code"
           placeholder="A7K9P2QX"
           autoComplete="one-time-code"
@@ -110,7 +110,7 @@ function VerifyEmailForm() {
         />
         <div className="rounded-[14px] border border-slate-200 bg-white/70 p-3 text-sm text-slate-600">
           <div className="flex items-center justify-between gap-4">
-            <span>No recibiste el codigo?</span>
+            <span>No recibiste el código?</span>
             <button
               className="font-bold text-action hover:text-[#0b4cc4] disabled:cursor-not-allowed disabled:text-slate-400"
               type="button"
@@ -121,7 +121,7 @@ function VerifyEmailForm() {
                 ? `Reenviar en ${resendSeconds}s`
                 : isResending
                   ? 'Enviando...'
-                  : 'Reenviar codigo'}
+                  : 'Reenviar código'}
             </button>
           </div>
         </div>

@@ -172,7 +172,7 @@ export default function RoomsPage() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
             <h2 className="text-lg font-black text-ink">Unirse a sala</h2>
             <form className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleJoinRoom}>
-              <RoomField label="Codigo de sala" name="code" placeholder="AB12CD34" />
+              <RoomField label="Código de sala" name="code" placeholder="AB12CD34" />
               <button
                 className="self-end rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-ink transition hover:border-action hover:text-action disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSaving}
@@ -230,7 +230,7 @@ function RoomCard({ onEnter, room }: { onEnter: () => void; room: Room }) {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-slate-500">
           <div className="flex flex-wrap items-center gap-3">
             <span>{room._count?.members ?? 0} integrantes</span>
-            <span>Codigo {room.code}</span>
+            <span>Código {room.code}</span>
           </div>
           <span className="font-black text-action transition group-hover:text-[#0b4cc4]">
             Ingresar a sala

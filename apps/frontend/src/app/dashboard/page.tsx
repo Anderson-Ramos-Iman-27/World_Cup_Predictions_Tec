@@ -81,7 +81,7 @@ export default function DashboardPage() {
       title={user ? `Hola, ${user.name}` : 'Panel del participante'}
       subtitle={
         user
-          ? 'Consulta tus proximos partidos, predicciones, salas y posicion en el ranking.'
+          ? 'Consulta tus próximos partidos, predicciones, salas y posicion en el ranking.'
           : 'Explora la plataforma e inicia sesion para gestionar tus salas y predicciones.'
       }
       heroContent={<HomeCarousel slides={slides} />}
@@ -162,7 +162,7 @@ export default function DashboardPage() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-bold text-ink">Proximos partidos</h2>
+              <h2 className="text-lg font-bold text-ink">Próximos partidos</h2>
               <Link className="text-sm font-bold text-action" href="/matches">
                 Ver todos
               </Link>

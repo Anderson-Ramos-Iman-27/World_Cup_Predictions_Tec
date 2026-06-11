@@ -152,7 +152,7 @@ export default function RoomDetailPage() {
       setCopiedRoomCode(true);
       window.setTimeout(() => setCopiedRoomCode(false), 1600);
     } catch {
-      setError('No se pudo copiar el codigo de la sala');
+      setError('No se pudo copiar el código de la sala');
     }
   }
 
@@ -160,7 +160,7 @@ export default function RoomDetailPage() {
     <PrivateRoute>
       <AppShell
         title={room?.name ?? 'Detalle de sala'}
-        subtitle="Gestiona integrantes, codigo de acceso y podio de esta sala."
+        subtitle="Gestiona integrantes, código de acceso y podio de esta sala."
       >
         {overlayMessage ? <LoadingOverlay message={overlayMessage} /> : null}
         {memberToRemove ? (
@@ -194,14 +194,14 @@ export default function RoomDetailPage() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-xs font-black uppercase tracking-[0.22em] text-action">
-                        Codigo {room.code}
+                        Código {room.code}
                       </p>
                       <button
-                        aria-label="Copiar codigo de la sala"
+                        aria-label="Copiar código de la sala"
                         className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-action/20 bg-white text-action transition hover:border-action hover:bg-action/10"
                         type="button"
                         onClick={handleCopyRoomCode}
-                        title={copiedRoomCode ? 'Codigo copiado' : 'Copiar codigo'}
+                        title={copiedRoomCode ? 'Código copiado' : 'Copiar código'}
                       >
                         {copiedRoomCode ? (
                           <CheckIcon />
@@ -218,7 +218,7 @@ export default function RoomDetailPage() {
                       Propietario: {room.owner?.name ?? 'Sin propietario'}
                     </p>
                     <p className="mt-3 max-w-2xl rounded-xl bg-slate-50 px-4 py-3 text-xs font-semibold leading-5 text-slate-500">
-                      Comparte este codigo con tus invitados para que puedan unirse a la sala desde la pantalla de Salas.
+                      Comparte este código con tus invitados para que puedan unirse a la sala desde la pantalla de Salas.
                     </p>
                   </div>
                   <Link

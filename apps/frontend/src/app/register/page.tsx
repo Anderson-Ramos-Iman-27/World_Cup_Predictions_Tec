@@ -43,7 +43,7 @@ export default function RegisterPage() {
         email,
         password: nextPassword,
       });
-      setSuccess('Cuenta creada. Revisa tu correo e ingresa el codigo de verificacion.');
+      setSuccess('Cuenta creada. Revisa tu correo e ingresa el código de verificacion.');
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo crear la cuenta');

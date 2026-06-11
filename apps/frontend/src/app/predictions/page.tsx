@@ -122,7 +122,7 @@ function PredictionCard({
 
         <div className={`rounded-xl border p-4 lg:min-w-80 ${statusClasses.summary}`}>
           <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-            Prediccion registrada
+            Predicción registrada
           </p>
           <p className="mt-2 text-2xl font-black text-ink">
             {formatPredictionValue(prediction)}
@@ -282,14 +282,14 @@ function getBonusDetail(prediction: Prediction) {
   const bonusPoints = prediction.score.bonusPoints ?? 0;
 
   if (bonusPoints <= 0) {
-    return 'Esta prediccion no obtuvo bonus. Puede ganar bonus por registrarse con mas de 24 horas de anticipacion o por racha de aciertos.';
+    return 'Esta predicción no obtuvo bonus. Puede ganar bonus por registrarse con mas de 24 horas de anticipacion o por racha de aciertos.';
   }
 
   const reason = (prediction.score.reason ?? '').toLowerCase();
   const details: string[] = [];
 
   if (reason.includes('anticipada')) {
-    details.push('Prediccion anticipada: +1 punto por registrarla con mas de 24 horas de anticipacion.');
+    details.push('Predicción anticipada: +1 punto por registrarla con mas de 24 horas de anticipacion.');
   }
 
   if (reason.includes('racha')) {
@@ -305,7 +305,7 @@ function getBonusDetail(prediction: Prediction) {
 
 function normalizeReason(reason: string) {
   return reason
-    .replace('prediccion anticipada', 'prediccion anticipada')
+    .replace('predicción anticipada', 'predicción anticipada')
     .replace('bonus por racha', 'bonus por racha')
     .replace('resultado exacto', 'resultado exacto')
     .replace('ganador correcto', 'ganador correcto')

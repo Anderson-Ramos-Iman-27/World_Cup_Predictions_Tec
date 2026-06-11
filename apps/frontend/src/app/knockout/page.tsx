@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import type { ExternalTeam, KnockoutMatch } from '@/features/user-panel/types';
 import { apiRequest } from '@/lib/http-client';
@@ -15,10 +15,17 @@ const stages = [
   { key: 'FINAL', label: 'Final' },
 ];
 
+type ConnectorLine = {
+  d: string;
+};
+
 export default function KnockoutPage() {
   const [matches, setMatches] = useState<KnockoutMatch[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
+  const bracketRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<Record<string, Array<HTMLDivElement | null>>>({});
 
   useEffect(() => {
     apiRequest<KnockoutMatch[]>('/football-data/knockout')
@@ -50,6 +57,61 @@ export default function KnockoutPage() {
     return grouped;
   }, [matches]);
 
+  useLayoutEffect(() => {
+    if (!matches.length) {
+      setConnectorLines([]);
+      return;
+    }
+
+    const computeLines = () => {
+      const container = bracketRef.current;
+      if (!container) {
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      const paths: ConnectorLine[] = [];
+
+      for (let stageIndex = 0; stageIndex < stages.length - 1; stageIndex += 1) {
+        const currentStage = stages[stageIndex];
+        const nextStage = stages[stageIndex + 1];
+        const currentCards = cardRefs.current[currentStage.key] ?? [];
+        const nextCards = cardRefs.current[nextStage.key] ?? [];
+
+        for (let cardIndex = 0; cardIndex < currentCards.length; cardIndex += 1) {
+          const source = currentCards[cardIndex];
+          const target = nextCards[Math.floor(cardIndex / 2)];
+
+          if (!source || !target) {
+            continue;
+          }
+
+          const sourceRect = source.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          const startX = sourceRect.right - containerRect.left;
+          const startY = sourceRect.top + sourceRect.height / 2 - containerRect.top;
+          const endX = targetRect.left - containerRect.left;
+          const endY = targetRect.top + targetRect.height / 2 - containerRect.top;
+          const elbowX = startX + (endX - startX) / 2;
+
+          paths.push({
+            d: `M ${startX} ${startY} H ${elbowX} V ${endY} H ${endX}`,
+          });
+        }
+      }
+
+      setConnectorLines(paths);
+    };
+
+    const raf = window.requestAnimationFrame(computeLines);
+    window.addEventListener('resize', computeLines);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener('resize', computeLines);
+    };
+  }, [matches]);
+
   return (
     <AppShell
       title="Fase eliminatoria"
@@ -71,24 +133,58 @@ export default function KnockoutPage() {
 
       {matches.length > 0 ? (
         <section className="relative left-1/2 w-screen -translate-x-1/2 overflow-x-auto border-y border-slate-200 bg-[#eef3f8] px-6 py-7 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
-          <div className="mx-auto grid min-h-[1040px] min-w-[1760px] grid-cols-6 gap-12">
-            {stages.map((stage) => (
-              <div className="flex flex-col gap-5" key={stage.key}>
-                <header className="rounded-full bg-action px-4 py-2 text-center text-xs font-black uppercase tracking-[0.12em] text-white">
-                  {stage.label}
-                </header>
-                <div className="flex flex-1 flex-col justify-around gap-5">
-                  {(matchesByStage.get(stage.key) ?? []).map((match) => (
-                    <KnockoutCard
-                      key={match.id}
-                      match={match}
-                      showPreviousConnector={stage.key !== 'LAST_32'}
-                      showConnector={stage.key !== 'FINAL'}
-                    />
-                  ))}
+          <div ref={bracketRef} className="relative mx-auto min-h-[1180px] min-w-[2100px]">
+            <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
+              {connectorLines.map((line, index) => (
+                <path
+                  d={line.d}
+                  fill="none"
+                  key={`${line.d}-${index}`}
+                  stroke="#c7d2e0"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  strokeWidth="2"
+                />
+              ))}
+            </svg>
+
+            <div className="absolute right-20 top-10 z-10 hidden w-56 flex-col items-center gap-2 rounded-3xl bg-white/80 p-4 shadow-[0_14px_34px_rgba(15,35,66,0.12)] backdrop-blur md:flex">
+              <Image
+                alt="Copa del mundo"
+                className="h-40 w-auto object-contain"
+                height={240}
+                src="/world-cup-trophy.png"
+                width={180}
+              />
+              <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-action">
+                Copa del Mundo
+              </p>
+            </div>
+
+            <div className="grid min-h-[1180px] min-w-[2100px] grid-cols-6 gap-12">
+              {stages.map((stage) => (
+                <div className="flex flex-col gap-5" key={stage.key}>
+                  <header className="rounded-full bg-action px-4 py-2 text-center text-xs font-black uppercase tracking-[0.12em] text-white">
+                    {stage.label}
+                  </header>
+                  <div className="flex flex-1 flex-col justify-around gap-5">
+                    {(matchesByStage.get(stage.key) ?? []).map((match, index) => (
+                      <div
+                        key={match.id}
+                        ref={(node) => {
+                          if (!cardRefs.current[stage.key]) {
+                            cardRefs.current[stage.key] = [];
+                          }
+                          cardRefs.current[stage.key][index] = node;
+                        }}
+                      >
+                        <KnockoutCard match={match} compact={stage.key === 'FINAL'} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
       ) : null}
@@ -96,47 +192,26 @@ export default function KnockoutPage() {
   );
 }
 
-function KnockoutCard({
-  match,
-  showPreviousConnector,
-  showConnector,
-}: {
-  match: KnockoutMatch;
-  showPreviousConnector: boolean;
-  showConnector: boolean;
-}) {
+function KnockoutCard({ match, compact }: { match: KnockoutMatch; compact?: boolean }) {
   const homeScore = match.score?.fullTime?.home;
   const awayScore = match.score?.fullTime?.away;
-  const hasScore = homeScore !== null && homeScore !== undefined && awayScore !== null && awayScore !== undefined;
+  const hasScore =
+    homeScore !== null && homeScore !== undefined && awayScore !== null && awayScore !== undefined;
   const homeTeam = getTeamDisplay(match.homeTeam);
   const awayTeam = getTeamDisplay(match.awayTeam);
 
   return (
     <article
       className={`relative rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_24px_rgba(15,35,66,0.10)] ${
-        showConnector
-          ? 'after:absolute after:left-full after:top-1/2 after:h-px after:w-12 after:bg-slate-300'
-          : ''
-      } ${
-        showPreviousConnector
-          ? 'before:absolute before:right-full before:top-1/2 before:h-px before:w-12 before:bg-slate-300'
-          : ''
+        compact ? 'max-w-[240px]' : ''
       }`}
     >
       <p className="mb-3 text-xs font-bold text-slate-500">
         {formatMatchDate(match.utcDate)} · {getExternalStatusLabel(match.status)}
       </p>
-      <TeamLine
-        crest={homeTeam.crest}
-        name={homeTeam.name}
-        score={hasScore ? homeScore : null}
-      />
+      <TeamLine crest={homeTeam.crest} name={homeTeam.name} score={hasScore ? homeScore : null} />
       <div className="my-2 border-t border-slate-100" />
-      <TeamLine
-        crest={awayTeam.crest}
-        name={awayTeam.name}
-        score={hasScore ? awayScore : null}
-      />
+      <TeamLine crest={awayTeam.crest} name={awayTeam.name} score={hasScore ? awayScore : null} />
     </article>
   );
 }
@@ -155,9 +230,17 @@ function TeamLine({
       <div className="flex min-w-0 items-center gap-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-50">
           {crest ? (
-            <Image alt={`Bandera de ${name}`} className="h-full w-full object-contain p-0.5" height={28} src={crest} width={28} />
+            <Image
+              alt={`Bandera de ${name}`}
+              className="h-full w-full object-contain p-0.5"
+              height={28}
+              src={crest}
+              width={28}
+            />
           ) : (
-            <span className="text-[10px] font-black text-slate-500">{name.slice(0, 2).toUpperCase()}</span>
+            <span className="text-[10px] font-black text-slate-500">
+              {name.slice(0, 2).toUpperCase()}
+            </span>
           )}
         </span>
         <span className="truncate text-sm font-black text-ink">{name}</span>
