@@ -100,29 +100,31 @@ export function AppShell({ title, subtitle, children, heroContent }: AppShellPro
                     Admin
                   </Link>
                 ) : null}
-                <Link
-                  aria-current={pathname.startsWith('/profile') ? 'page' : undefined}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full font-black shadow-[0_10px_22px_rgba(20,87,217,0.28)] transition ${
-                    pathname.startsWith('/profile')
-                      ? 'bg-white text-[#082442] ring-2 ring-action'
-                      : 'bg-action text-white'
-                  }`}
-                  href="/profile"
-                  title="Perfil"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {user.name.slice(0, 1).toUpperCase()}
-                </Link>
-                <button
-                  className="rounded-xl border border-white/15 px-3 py-2 font-bold text-blue-100 transition hover:bg-white/10 hover:text-white"
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    setShowLogoutConfirm(true);
-                  }}
-                >
-                  Cerrar sesión
-                </button>
+                <div className="flex items-center gap-3 pt-1">
+                  <Link
+                    aria-current={pathname.startsWith('/profile') ? 'page' : undefined}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-black shadow-[0_10px_22px_rgba(20,87,217,0.28)] transition ${
+                      pathname.startsWith('/profile')
+                        ? 'bg-white text-[#082442] ring-2 ring-action'
+                        : 'bg-action text-white'
+                    }`}
+                    href="/profile"
+                    title="Perfil"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {user.name.slice(0, 1).toUpperCase()}
+                  </Link>
+                  <button
+                    className="flex-1 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-blue-100 transition hover:bg-white/10 hover:text-white"
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setShowLogoutConfirm(true);
+                    }}
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
               </>
             ) : (
               <>

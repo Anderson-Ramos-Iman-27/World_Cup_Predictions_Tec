@@ -275,8 +275,7 @@ services:
     image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "${NGINX_TEST_PORT_ONE:-3001}:80"
-      - "${NGINX_TEST_PORT_TWO:-3002}:80"
+      - "80:80"
     volumes:
       - ./infra/nginx/nginx.aws.conf:/etc/nginx/nginx.conf:ro
     depends_on:
