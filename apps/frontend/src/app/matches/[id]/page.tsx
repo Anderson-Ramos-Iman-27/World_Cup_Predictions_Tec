@@ -201,10 +201,15 @@ export default function MatchDetailPage() {
                 name={match.homeTeam.name}
                 crestUrl={match.homeTeam.crestUrl}
               />
-              <div className="rounded-lg bg-slate-100 px-5 py-3 text-center text-xl font-black text-ink">
-                {match.status === 'FINISHED'
-                  ? `${match.homeScore ?? '-'} - ${match.awayScore ?? '-'}`
-                  : 'VS'}
+              <div className="rounded-lg bg-slate-100 px-5 py-3 text-center text-ink">
+                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
+                  {match.status === 'FINISHED' ? 'Resultado final' : 'VS'}
+                </p>
+                <p className="mt-1 text-xl font-black sm:text-2xl">
+                  {match.status === 'FINISHED'
+                    ? `${match.homeScore ?? '-'} - ${match.awayScore ?? '-'}`
+                    : 'Pendiente'}
+                </p>
               </div>
               <TeamBadge
                 align="right"

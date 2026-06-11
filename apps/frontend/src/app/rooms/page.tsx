@@ -17,6 +17,7 @@ export default function RoomsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [overlayMessage, setOverlayMessage] = useState('');
   const [selectedColor, setSelectedColor] = useState('#1457d9');
+  const [roomSearch, setRoomSearch] = useState('');
 
   useEffect(() => {
     loadRooms();
@@ -31,6 +32,10 @@ export default function RoomsPage() {
       )
       .finally(() => setIsLoading(false));
   }
+
+  const filteredRooms = rooms.filter((room) =>
+    room.name.toLowerCase().includes(roomSearch.trim().toLowerCase()),
+  );
 
   async function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -171,31 +176,50 @@ export default function RoomsPage() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
             <h2 className="text-lg font-black text-ink">Unirse a sala</h2>
-            <form className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleJoinRoom}>
-              <RoomField label="Código de sala" name="code" placeholder="AB12CD34" />
-              <button
-                className="self-end rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-ink transition hover:border-action hover:text-action disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isSaving}
-                type="submit"
-              >
-                Unirme
-              </button>
-            </form>
+            <div className="mt-5 grid gap-4">
+              <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleJoinRoom}>
+                <RoomField label="Código de sala" name="code" placeholder="AB12CD34" />
+                <button
+                  className="self-end rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-ink transition hover:border-action hover:text-action disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isSaving}
+                  type="submit"
+                >
+                  Unirme
+                </button>
+              </form>
 
-            <div className="mt-6 grid gap-4">
+              <label className="block">
+                <span className="text-sm font-bold text-ink">Buscar sala unida</span>
+                <input
+                  className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
+                  placeholder="Escribe el nombre de la sala"
+                  type="search"
+                  value={roomSearch}
+                  onChange={(event) => setRoomSearch(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <div className="mt-6">
               {isLoading ? <p className="text-sm text-slate-500">Cargando...</p> : null}
-              {!isLoading && rooms.length === 0 ? (
+              {!isLoading && filteredRooms.length === 0 ? (
                 <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                  Aun no perteneces a ninguna sala.
+                  {roomSearch.trim()
+                    ? 'No se encontró ninguna sala con ese nombre.'
+                    : 'Aun no perteneces a ninguna sala.'}
                 </p>
               ) : null}
-              {rooms.map((room) => (
-                <RoomCard
-                  key={room.id}
-                  room={room}
-                  onEnter={() => setOverlayMessage('Ingresando a la sala...')}
-                />
-              ))}
+              <div className="mt-4 max-h-[calc(3*7.5rem+2rem)] overflow-y-auto pr-2">
+                <div className="grid gap-4">
+                  {filteredRooms.map((room) => (
+                    <RoomCard
+                      key={room.id}
+                      room={room}
+                      onEnter={() => setOverlayMessage('Ingresando a la sala...')}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         </div>

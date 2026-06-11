@@ -1,10 +1,12 @@
-import { Role, UserStatus } from '@prisma/client';
+import { UserStatus } from '@prisma/client';
+
+export type UserRole = 'USER' | 'ADMIN';
 
 export type AuthenticatedUser = {
   id: string;
   email: string;
   name: string;
-  role: Role;
+  role: UserRole;
   status: UserStatus;
   tokenVersion?: number;
 };

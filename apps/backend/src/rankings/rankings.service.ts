@@ -1,8 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Role } from '@prisma/client';
 import { AuthenticatedUser } from '../common/types/authenticated-user.type';
 import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+type RankedPrediction = {
+  userId: string;
+  submittedAt: Date;
+  user: {
+    name: string;
+    email: string;
+  };
+  score: {
+    totalPoints: number;
+  } | null;
+};
+
+type RoomRankingMember = {
+  userId: string;
+  user: {
+    name: string;
+    email: string;
+  };
+};
 
 type RankingEntry = {
   position: number;
@@ -11,6 +30,7 @@ type RankingEntry = {
   email: string;
   totalPoints: number;
   predictionsCount: number;
+  firstPredictionAt?: string | null;
 };
 
 @Injectable()
@@ -30,7 +50,7 @@ export class RankingsService {
       return cached;
     }
 
-    const predictions = await this.prisma.prediction.findMany({
+    const predictions = (await this.prisma.prediction.findMany({
       where: {
         roomId: null,
         score: { isNot: null },
@@ -39,7 +59,7 @@ export class RankingsService {
         user: true,
         score: true,
       },
-    });
+    })) as RankedPrediction[];
 
     const ranking = this.buildRanking(
       predictions.map((prediction) => ({
@@ -47,6 +67,7 @@ export class RankingsService {
         name: prediction.user.name,
         email: prediction.user.email,
         points: prediction.score?.totalPoints ?? 0,
+        firstPredictionAt: prediction.submittedAt,
       })),
     );
 
@@ -77,7 +98,7 @@ export class RankingsService {
       throw new NotFoundException('Room not found');
     }
 
-    const predictions = await this.prisma.prediction.findMany({
+    const predictions = (await this.prisma.prediction.findMany({
       where: {
         roomId,
         score: { isNot: null },
@@ -85,23 +106,33 @@ export class RankingsService {
       include: {
         score: true,
       },
-    });
+    })) as Array<RankedPrediction & { userId: string }>;
 
-    const pointsByUser = new Map<string, { points: number; count: number }>();
+    const pointsByUser = new Map<
+      string,
+      { points: number; count: number; firstPredictionAt: Date | null }
+    >();
 
     for (const prediction of predictions) {
       const current = pointsByUser.get(prediction.userId) ?? {
         points: 0,
         count: 0,
+        firstPredictionAt: null,
       };
 
       current.points += prediction.score?.totalPoints ?? 0;
       current.count += 1;
+      if (
+        !current.firstPredictionAt ||
+        prediction.submittedAt < current.firstPredictionAt
+      ) {
+        current.firstPredictionAt = prediction.submittedAt;
+      }
       pointsByUser.set(prediction.userId, current);
     }
 
     const ranking = this.positionRanking(
-      room.members.map((member) => {
+      (room.members as RoomRankingMember[]).map((member) => {
         const points = pointsByUser.get(member.userId);
 
         return {
@@ -110,6 +141,7 @@ export class RankingsService {
           email: member.user.email,
           totalPoints: points?.points ?? 0,
           predictionsCount: points?.count ?? 0,
+          firstPredictionAt: points?.firstPredictionAt?.toISOString() ?? null,
         };
       }),
     );
@@ -268,6 +300,7 @@ export class RankingsService {
       name: string;
       email: string;
       points: number;
+      firstPredictionAt: Date;
     }>,
   ) {
     const grouped = new Map<
@@ -282,10 +315,15 @@ export class RankingsService {
         email: entry.email,
         totalPoints: 0,
         predictionsCount: 0,
+        firstPredictionAt: null,
       };
 
       current.totalPoints += entry.points;
       current.predictionsCount += 1;
+      const entryTimestamp = entry.firstPredictionAt.toISOString();
+      if (!current.firstPredictionAt || entryTimestamp < current.firstPredictionAt) {
+        current.firstPredictionAt = entryTimestamp;
+      }
       grouped.set(entry.userId, current);
     }
 
@@ -301,6 +339,17 @@ export class RankingsService {
           return second.totalPoints - first.totalPoints;
         }
 
+        const firstTime = first.firstPredictionAt
+          ? new Date(first.firstPredictionAt).getTime()
+          : Number.POSITIVE_INFINITY;
+        const secondTime = second.firstPredictionAt
+          ? new Date(second.firstPredictionAt).getTime()
+          : Number.POSITIVE_INFINITY;
+
+        if (firstTime !== secondTime) {
+          return firstTime - secondTime;
+        }
+
         return first.name.localeCompare(second.name);
       })
       .map((entry, index) => ({
@@ -310,7 +359,7 @@ export class RankingsService {
   }
 
   private async ensureCanViewRoom(roomId: string, user: AuthenticatedUser) {
-    if (user.role === Role.ADMIN) {
+    if (user.role === 'ADMIN') {
       const room = await this.prisma.room.findUnique({
         where: { id: roomId },
       });

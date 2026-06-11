@@ -183,9 +183,16 @@ function PredictionAuditCard({
               name={prediction.match.homeTeam.name}
               crestUrl={prediction.match.homeTeam.crestUrl}
             />
-            <span className="rounded-lg bg-slate-50 px-4 py-2 text-center text-sm font-black text-slate-500">
-              VS
-            </span>
+            <div className="rounded-lg bg-slate-50 px-4 py-2 text-center">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
+                {prediction.match.status === 'FINISHED' ? 'Resultado final' : 'VS'}
+              </p>
+              <p className="mt-1 text-sm font-black text-ink">
+                {prediction.match.homeScore !== null || prediction.match.awayScore !== null
+                  ? `${prediction.match.homeScore ?? '-'} - ${prediction.match.awayScore ?? '-'}`
+                  : 'Pendiente'}
+              </p>
+            </div>
             <TeamBadge
               align="right"
               name={prediction.match.awayTeam.name}
@@ -194,7 +201,10 @@ function PredictionAuditCard({
           </div>
 
           <p className="mt-3 text-sm font-semibold text-slate-500">
-            {formatDateTime(prediction.match.utcDate)}
+            Partido: {formatDateTime(prediction.match.utcDate)}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-slate-500">
+            Registrada: {formatDateTime(prediction.submittedAt)}
           </p>
         </div>
 

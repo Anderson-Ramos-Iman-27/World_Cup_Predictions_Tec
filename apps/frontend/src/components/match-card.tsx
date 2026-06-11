@@ -32,9 +32,14 @@ export function MatchCard({ match, href, onNavigate }: MatchCardProps) {
           <TeamBadge name={match.homeTeam.name} crestUrl={match.homeTeam.crestUrl} />
           <div className="min-w-0 rounded-xl bg-slate-50 px-4 py-3 text-center md:min-w-20">
             {isFinished || isLive ? (
-              <p className="text-xl font-black text-ink sm:text-2xl">
-                {match.homeScore ?? '-'} - {match.awayScore ?? '-'}
-              </p>
+              <>
+                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
+                  {isFinished ? 'Resultado final' : 'Marcador parcial'}
+                </p>
+                <p className="mt-1 text-xl font-black text-ink sm:text-2xl">
+                  {match.homeScore ?? '-'} - {match.awayScore ?? '-'}
+                </p>
+              </>
             ) : (
               <p className="text-lg font-black text-ink sm:text-xl">VS</p>
             )}
