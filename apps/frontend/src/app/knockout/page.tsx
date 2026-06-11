@@ -26,6 +26,9 @@ export default function KnockoutPage() {
   const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
   const bracketRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Record<string, Array<HTMLDivElement | null>>>({});
+  const topScrollerRef = useRef<HTMLDivElement | null>(null);
+  const mainScrollerRef = useRef<HTMLDivElement | null>(null);
+  const syncingScrollRef = useRef(false);
 
   useEffect(() => {
     apiRequest<KnockoutMatch[]>('/football-data/knockout')
@@ -112,6 +115,43 @@ export default function KnockoutPage() {
     };
   }, [matches]);
 
+  useEffect(() => {
+    const topScroller = topScrollerRef.current;
+    const mainScroller = mainScrollerRef.current;
+
+    if (!topScroller || !mainScroller) {
+      return;
+    }
+
+    const syncFromTop = () => {
+      if (syncingScrollRef.current) {
+        syncingScrollRef.current = false;
+        return;
+      }
+
+      syncingScrollRef.current = true;
+      mainScroller.scrollLeft = topScroller.scrollLeft;
+    };
+
+    const syncFromMain = () => {
+      if (syncingScrollRef.current) {
+        syncingScrollRef.current = false;
+        return;
+      }
+
+      syncingScrollRef.current = true;
+      topScroller.scrollLeft = mainScroller.scrollLeft;
+    };
+
+    topScroller.addEventListener('scroll', syncFromTop);
+    mainScroller.addEventListener('scroll', syncFromMain);
+
+    return () => {
+      topScroller.removeEventListener('scroll', syncFromTop);
+      mainScroller.removeEventListener('scroll', syncFromMain);
+    };
+  }, [matches]);
+
   return (
     <AppShell
       title="Fase eliminatoria"
@@ -132,58 +172,64 @@ export default function KnockoutPage() {
       ) : null}
 
       {matches.length > 0 ? (
-        <section className="relative left-1/2 w-screen -translate-x-1/2 overflow-x-auto border-y border-slate-200 bg-[#eef3f8] px-6 py-7 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
-          <div ref={bracketRef} className="relative mx-auto min-h-[1180px] min-w-[2100px]">
-            <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
-              {connectorLines.map((line, index) => (
-                <path
-                  d={line.d}
-                  fill="none"
-                  key={`${line.d}-${index}`}
-                  stroke="#c7d2e0"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  strokeWidth="2"
+        <section className="relative left-1/2 w-screen -translate-x-1/2 border-y border-slate-200 bg-[#eef3f8] py-4 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
+          <div
+            ref={topScrollerRef}
+            className="sticky top-0 z-20 mx-auto mb-3 w-full overflow-x-auto bg-[#eef3f8]/95 px-6 pb-2 backdrop-blur"
+          >
+            <div className="h-3 min-w-[2100px]" />
+          </div>
+
+          <div ref={mainScrollerRef} className="overflow-x-auto px-6 pb-3">
+            <div ref={bracketRef} className="relative mx-auto min-h-[1180px] min-w-[2100px]">
+              <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
+                {connectorLines.map((line, index) => (
+                  <path
+                    d={line.d}
+                    fill="none"
+                    key={`${line.d}-${index}`}
+                    stroke="#c7d2e0"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                  />
+                ))}
+              </svg>
+
+              <div className="absolute right-14 top-8 z-10 hidden w-44 items-center justify-center rounded-3xl bg-white/82 p-5 shadow-[0_14px_34px_rgba(15,35,66,0.12)] backdrop-blur md:flex">
+                <Image
+                  alt="Copa del mundo"
+                  className="h-40 w-auto object-contain"
+                  height={240}
+                  src="/world-cup-trophy.png"
+                  width={180}
                 />
-              ))}
-            </svg>
+              </div>
 
-            <div className="absolute right-20 top-10 z-10 hidden w-56 flex-col items-center gap-2 rounded-3xl bg-white/80 p-4 shadow-[0_14px_34px_rgba(15,35,66,0.12)] backdrop-blur md:flex">
-              <Image
-                alt="Copa del mundo"
-                className="h-40 w-auto object-contain"
-                height={240}
-                src="/world-cup-trophy.png"
-                width={180}
-              />
-              <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-action">
-                Copa del Mundo
-              </p>
-            </div>
-
-            <div className="grid min-h-[1180px] min-w-[2100px] grid-cols-6 gap-12">
-              {stages.map((stage) => (
-                <div className="flex flex-col gap-5" key={stage.key}>
-                  <header className="rounded-full bg-action px-4 py-2 text-center text-xs font-black uppercase tracking-[0.12em] text-white">
-                    {stage.label}
-                  </header>
-                  <div className="flex flex-1 flex-col justify-around gap-5">
-                    {(matchesByStage.get(stage.key) ?? []).map((match, index) => (
-                      <div
-                        key={match.id}
-                        ref={(node) => {
-                          if (!cardRefs.current[stage.key]) {
-                            cardRefs.current[stage.key] = [];
-                          }
-                          cardRefs.current[stage.key][index] = node;
-                        }}
-                      >
-                        <KnockoutCard match={match} compact={stage.key === 'FINAL'} />
-                      </div>
-                    ))}
+              <div className="grid min-h-[1180px] min-w-[2100px] grid-cols-6 gap-12">
+                {stages.map((stage) => (
+                  <div className="flex flex-col gap-5" key={stage.key}>
+                    <header className="rounded-full bg-action px-4 py-2 text-center text-xs font-black uppercase tracking-[0.12em] text-white">
+                      {stage.label}
+                    </header>
+                    <div className="flex flex-1 flex-col justify-around gap-5">
+                      {(matchesByStage.get(stage.key) ?? []).map((match, index) => (
+                        <div
+                          key={match.id}
+                          ref={(node) => {
+                            if (!cardRefs.current[stage.key]) {
+                              cardRefs.current[stage.key] = [];
+                            }
+                            cardRefs.current[stage.key][index] = node;
+                          }}
+                        >
+                          <KnockoutCard match={match} compact={stage.key === 'FINAL'} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </section>
