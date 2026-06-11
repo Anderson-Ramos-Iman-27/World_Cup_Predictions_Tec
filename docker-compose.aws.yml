@@ -278,6 +278,8 @@ services:
       - "80:80"
     volumes:
       - ./infra/nginx/nginx.aws.conf:/etc/nginx/nginx.conf:ro
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
     depends_on:
       frontend-1:
         condition: service_healthy
@@ -308,9 +310,20 @@ services:
     networks:
       - app-network
 
+  certbot:
+    image: certbot/certbot:latest
+    restart: "no"
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    networks:
+      - app-network
+
 volumes:
   postgres-data:
   redis-data:
+  certbot-webroot:
+  certbot-certs:
 
 networks:
   app-network:
