@@ -132,7 +132,7 @@ export default function KnockoutPage() {
       ) : null}
 
       {matches.length > 0 ? (
-        <section className="-mx-5 overflow-x-auto border-y border-slate-200 bg-[#eef3f8] px-5 py-7 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
+        <section className="relative left-1/2 box-border w-screen -translate-x-1/2 overflow-x-auto border-y border-slate-200 bg-[#eef3f8] px-6 py-7 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
           <div className="pb-3">
             <div ref={bracketRef} className="relative mx-auto min-h-[1180px] min-w-[2100px]">
               <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
@@ -155,24 +155,10 @@ export default function KnockoutPage() {
                     <header className="rounded-full bg-action px-4 py-2 text-center text-xs font-black uppercase tracking-[0.12em] text-white">
                       {stage.label}
                     </header>
-                    <div
-                      className={`flex flex-1 flex-col gap-5 ${
-                        stage.key === 'FINAL' ? 'justify-center' : 'justify-around'
-                      }`}
-                    >
-                      {stage.key === 'FINAL' ? (
-                        <div className="mb-2 flex items-center justify-center">
-                          <Image
-                            alt="Copa del mundo"
-                            className="h-28 w-auto object-contain sm:h-32 md:h-44"
-                            height={260}
-                            src="/world-cup-trophy.png"
-                            width={190}
-                          />
-                        </div>
-                      ) : null}
+                    <div className="flex flex-1 flex-col justify-around gap-5">
                       {(matchesByStage.get(stage.key) ?? []).map((match, index) => (
                         <div
+                          className={stage.key === 'FINAL' ? 'relative mx-auto w-full max-w-[240px]' : ''}
                           key={match.id}
                           ref={(node) => {
                             if (!cardRefs.current[stage.key]) {
@@ -181,6 +167,17 @@ export default function KnockoutPage() {
                             cardRefs.current[stage.key][index] = node;
                           }}
                         >
+                          {stage.key === 'FINAL' ? (
+                            <div className="pointer-events-none absolute bottom-full left-1/2 mb-4 -translate-x-1/2">
+                              <Image
+                                alt="Copa del mundo"
+                                className="h-28 w-auto object-contain sm:h-32 md:h-44"
+                                height={260}
+                                src="/world-cup-trophy.png"
+                                width={190}
+                              />
+                            </div>
+                          ) : null}
                           <KnockoutCard match={match} compact={stage.key === 'FINAL'} />
                         </div>
                       ))}
