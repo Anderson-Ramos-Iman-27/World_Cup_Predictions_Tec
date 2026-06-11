@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { AuthenticatedUser } from '../common/types/authenticated-user.type';
 import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -30,6 +32,7 @@ export class RankingsService {
 
     const predictions = await this.prisma.prediction.findMany({
       where: {
+        roomId: null,
         score: { isNot: null },
       },
       include: {
@@ -74,10 +77,9 @@ export class RankingsService {
       throw new NotFoundException('Room not found');
     }
 
-    const memberIds = room.members.map((member) => member.userId);
     const predictions = await this.prisma.prediction.findMany({
       where: {
-        userId: { in: memberIds },
+        roomId,
         score: { isNot: null },
       },
       include: {
@@ -146,6 +148,7 @@ export class RankingsService {
     const predictions = await this.prisma.prediction.findMany({
       where: {
         userId,
+        roomId: null,
       },
       include: {
         room: {
@@ -171,6 +174,75 @@ export class RankingsService {
     });
 
     return {
+      user,
+      predictions,
+    };
+  }
+
+  async getRoomUserHistory(
+    roomId: string,
+    userId: string,
+    viewer: AuthenticatedUser,
+  ) {
+    await this.ensureCanViewRoom(roomId, viewer);
+
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        code: true,
+      },
+    });
+
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const predictions = await this.prisma.prediction.findMany({
+      where: {
+        userId,
+        roomId,
+      },
+      include: {
+        room: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
+        match: {
+          include: {
+            homeTeam: true,
+            awayTeam: true,
+          },
+        },
+        score: true,
+      },
+      orderBy: {
+        match: {
+          utcDate: 'desc',
+        },
+      },
+    });
+
+    return {
+      room,
       user,
       predictions,
     };
@@ -235,5 +307,32 @@ export class RankingsService {
         position: index + 1,
         ...entry,
       }));
+  }
+
+  private async ensureCanViewRoom(roomId: string, user: AuthenticatedUser) {
+    if (user.role === Role.ADMIN) {
+      const room = await this.prisma.room.findUnique({
+        where: { id: roomId },
+      });
+
+      if (!room) {
+        throw new NotFoundException('Room not found');
+      }
+
+      return;
+    }
+
+    const member = await this.prisma.roomMember.findUnique({
+      where: {
+        roomId_userId: {
+          roomId,
+          userId: user.id,
+        },
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Room not found');
+    }
   }
 }

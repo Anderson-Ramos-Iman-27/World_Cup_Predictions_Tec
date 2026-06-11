@@ -221,13 +221,22 @@ export default function RoomDetailPage() {
                       Comparte este código con tus invitados para que puedan unirse a la sala desde la pantalla de Salas.
                     </p>
                   </div>
-                  <Link
-                    className="text-sm font-bold text-action"
-                    href="/rooms"
-                    onClick={() => setOverlayMessage('Volviendo a salas...')}
-                  >
-                    Volver
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Link
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-action/20 bg-action px-4 text-sm font-black text-white transition hover:bg-blue-700"
+                      href={`/rooms/${room.id}/predictions`}
+                      onClick={() => setOverlayMessage('Abriendo predicciones de la sala...')}
+                    >
+                      Hacer predicciones en esta sala
+                    </Link>
+                    <Link
+                      className="text-sm font-bold text-action"
+                      href="/rooms"
+                      onClick={() => setOverlayMessage('Volviendo a salas...')}
+                    >
+                      Volver
+                    </Link>
+                  </div>
                 </div>
 
                 {canManage ? (
@@ -295,7 +304,7 @@ export default function RoomDetailPage() {
                 {podium.map((entry) => (
                   <Link
                     className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 transition hover:bg-blue-50"
-                    href={`/users/${entry.userId}/predictions`}
+                    href={`/rooms/${room.id}/users/${entry.userId}/predictions`}
                     key={entry.userId}
                   >
                     <div>

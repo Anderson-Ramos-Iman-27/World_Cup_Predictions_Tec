@@ -80,6 +80,11 @@ export type Prediction = {
   submittedAt: string;
   match: Match;
   room?: Pick<Room, 'id' | 'name' | 'color'> | null;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   score?: Score | null;
 };
 

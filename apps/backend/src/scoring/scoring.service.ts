@@ -197,8 +197,6 @@ export class ScoringService {
       updatedScores += await this.recalculateUserScores(group.userId);
     }
 
-    await this.invalidateRankingCachesForUsers(groups.map((group) => group.userId));
-
     return {
       matchId,
       status: 'recalculated',
@@ -227,8 +225,6 @@ export class ScoringService {
     for (const group of groups) {
       updatedScores += await this.recalculateUserScores(group.userId);
     }
-
-    await this.invalidateRankingCachesForUsers(groups.map((group) => group.userId));
 
     return {
       status: 'recalculated',
@@ -263,6 +259,8 @@ export class ScoringService {
     });
 
     let consecutiveWinnerHits = 0;
+    const roomIds = new Set<string>();
+    let invalidateGlobal = false;
     const predictionsByMatch = this.groupPredictionsByMatch(predictions);
 
     for (const matchPredictions of predictionsByMatch) {
@@ -304,25 +302,17 @@ export class ScoringService {
             reason: calculation.reason,
           },
         });
+
+        if (prediction.roomId) {
+          roomIds.add(prediction.roomId);
+        } else {
+          invalidateGlobal = true;
+        }
       }
     }
 
+    await this.invalidateRankingCaches([...roomIds], invalidateGlobal);
     return predictions.length;
-  }
-
-  private async invalidateRankingCachesForUsers(userIds: string[]) {
-    const memberships = await this.prisma.roomMember.findMany({
-      where: {
-        userId: {
-          in: [...new Set(userIds)],
-        },
-      },
-      select: {
-        roomId: true,
-      },
-    });
-
-    await this.invalidateRankingCaches(memberships.map((member) => member.roomId));
   }
 
   private groupPredictionsByMatch<T extends { match: { id: string } }>(
@@ -339,10 +329,15 @@ export class ScoringService {
     return [...groups.values()];
   }
 
-  private async invalidateRankingCaches(roomIds: string[]) {
+  private async invalidateRankingCaches(
+    roomIds: string[],
+    invalidateGlobal = true,
+  ) {
     const uniqueRoomIds = [...new Set(roomIds)];
 
-    await this.rankingsService.invalidateGlobalRanking();
+    if (invalidateGlobal) {
+      await this.rankingsService.invalidateGlobalRanking();
+    }
 
     if (uniqueRoomIds.length === 0) {
       return;

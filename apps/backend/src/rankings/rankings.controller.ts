@@ -1,5 +1,7 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AuthenticatedUser } from '../common/types/authenticated-user.type';
 import { RankingsService } from './rankings.service';
 
 @Controller('rankings')
@@ -27,5 +29,15 @@ export class RankingsController {
   @UseGuards(JwtAuthGuard)
   getUserHistory(@Param('userId') userId: string) {
     return this.rankingsService.getUserHistory(userId);
+  }
+
+  @Get('rooms/:roomId/users/:userId/history')
+  @UseGuards(JwtAuthGuard)
+  getRoomUserHistory(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param('roomId') roomId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.rankingsService.getRoomUserHistory(roomId, userId, viewer);
   }
 }

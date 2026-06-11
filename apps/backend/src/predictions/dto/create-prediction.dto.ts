@@ -2,6 +2,7 @@ import { PredictionOutcome, PredictionType } from '@prisma/client';
 import {
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
   Min,
   ValidateIf,
@@ -10,6 +11,10 @@ import {
 export class CreatePredictionDto {
   @IsString()
   matchId!: string;
+
+  @IsOptional()
+  @IsString()
+  roomId?: string;
 
   @IsEnum(PredictionType)
   predictionType!: PredictionType;

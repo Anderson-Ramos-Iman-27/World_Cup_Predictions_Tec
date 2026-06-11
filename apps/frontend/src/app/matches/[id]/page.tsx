@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import { TeamBadge } from '@/components/team-badge';
 import { useAuth } from '@/features/auth/auth-context';
@@ -22,7 +22,9 @@ const predictionModes: PredictionMode[] = ['EXACT_SCORE', 'WINNER', 'GOAL_DIFFER
 
 export default function MatchDetailPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const { user, isLoading: isAuthLoading } = useAuth();
+  const roomId = searchParams.get('roomId');
   const [match, setMatch] = useState<Match | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [predictionMode, setPredictionMode] = useState<PredictionMode>('EXACT_SCORE');
@@ -52,10 +54,18 @@ export default function MatchDetailPage() {
       return;
     }
 
-    apiRequest<Prediction[]>('/predictions/my')
-      .then(setPredictions)
+    const endpoint = roomId ? `/predictions/room/${roomId}` : '/predictions/my';
+
+    apiRequest<Prediction[]>(endpoint)
+      .then((nextPredictions) =>
+        setPredictions(
+          roomId
+            ? nextPredictions.filter((prediction) => prediction.user?.id === user.id)
+            : nextPredictions,
+        ),
+      )
       .catch(() => null);
-  }, [isAuthLoading, user]);
+  }, [isAuthLoading, roomId, user]);
 
   const matchPredictions = useMemo(
     () => predictions.filter((prediction) => prediction.match.id === params.id),
@@ -113,6 +123,7 @@ export default function MatchDetailPage() {
       winnerChoice,
       differenceChoice,
       goalDifference,
+      roomId,
     });
 
     if (!payload) {
@@ -132,7 +143,11 @@ export default function MatchDetailPage() {
         saved,
         ...current.filter((prediction) => prediction.id !== saved.id),
       ]);
-      setSuccess('Predicción guardada correctamente. Podrás verla en el apartado de Predicciones.');
+      setSuccess(
+        roomId
+          ? 'Predicción guardada correctamente. Podrás verla dentro de esta sala.'
+          : 'Predicción guardada correctamente. Podrás verla en el apartado de Predicciones.',
+      );
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo guardar la predicción');
     } finally {
@@ -143,7 +158,11 @@ export default function MatchDetailPage() {
   return (
     <AppShell
       title="Detalle de partido"
-      subtitle="Consulta la información del encuentro. Para guardar una predicción debes iniciar sesión."
+      subtitle={
+        roomId
+          ? 'Consulta la informacion del encuentro y guarda una prediccion que solo contara para esta sala.'
+          : 'Consulta la informacion del encuentro. Para guardar una prediccion debes iniciar sesion.'
+      }
     >
       {isSubmitting ? <LoadingOverlay message="Guardando tu predicción..." /> : null}
       {navigationMessage ? <LoadingOverlay message={navigationMessage} /> : null}
@@ -200,7 +219,9 @@ export default function MatchDetailPage() {
                   <div>
                     <h3 className="text-lg font-black text-ink">Opciones de predicción</h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      Elige una sola modalidad. Cuenta para tu ranking global y para todas tus salas.
+                      {roomId
+                        ? 'Elige una sola modalidad. Esta prediccion contara solo para el podio de la sala.'
+                        : 'Elige una sola modalidad. Cuenta para tu ranking global y para todas tus salas.'}
                     </p>
                   </div>
                   {matchPredictions.length > 0 ? (
@@ -301,8 +322,15 @@ export default function MatchDetailPage() {
                 {success ? (
                   <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
                     {success}{' '}
-                    <Link className="font-black underline" href="/predictions">
-                      Ver mis predicciones
+                    <Link
+                      className="font-black underline"
+                      href={
+                        roomId && user
+                          ? `/rooms/${roomId}/users/${user.id}/predictions`
+                          : '/predictions'
+                      }
+                    >
+                      {roomId ? 'Ver predicciones de esta sala' : 'Ver mis predicciones'}
                     </Link>
                   </div>
                 ) : null}
@@ -367,6 +395,7 @@ function buildPredictionPayload(
     winnerChoice: PredictionOutcome;
     differenceChoice: PredictionOutcome;
     goalDifference: number;
+    roomId: string | null;
   },
 ) {
   if (values.predictionMode === 'EXACT_SCORE') {
@@ -376,6 +405,7 @@ function buildPredictionPayload(
 
     return {
       matchId,
+      ...(values.roomId ? { roomId: values.roomId } : {}),
       predictionType: values.predictionMode,
       homeScore: values.homeScore,
       awayScore: values.awayScore,
@@ -385,6 +415,7 @@ function buildPredictionPayload(
   if (values.predictionMode === 'WINNER') {
     return {
       matchId,
+      ...(values.roomId ? { roomId: values.roomId } : {}),
       predictionType: values.predictionMode,
       predictedWinner: values.winnerChoice,
     };
@@ -396,6 +427,7 @@ function buildPredictionPayload(
 
   return {
     matchId,
+    ...(values.roomId ? { roomId: values.roomId } : {}),
     predictionType: values.predictionMode,
     predictedWinner: values.differenceChoice,
     goalDifference: values.goalDifference,

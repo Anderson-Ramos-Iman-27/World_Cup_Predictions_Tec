@@ -17,6 +17,9 @@ export class PredictionsService {
 
   async create(userId: string, createPredictionDto: CreatePredictionDto) {
     await this.ensureMatchCanBePredicted(createPredictionDto.matchId);
+    if (createPredictionDto.roomId) {
+      await this.ensureRoomMember(createPredictionDto.roomId, userId);
+    }
     this.validatePredictionPayload(createPredictionDto);
 
     try {
@@ -24,6 +27,7 @@ export class PredictionsService {
         data: {
           userId,
           matchId: createPredictionDto.matchId,
+          roomId: createPredictionDto.roomId ?? null,
           predictionType: createPredictionDto.predictionType,
           homeScore:
             createPredictionDto.predictionType === PredictionType.EXACT_SCORE
@@ -120,31 +124,76 @@ export class PredictionsService {
 
   async findMyPredictions(userId: string) {
     return this.prisma.prediction.findMany({
-      where: { userId },
+      where: {
+        userId,
+        roomId: null,
+      },
       include: this.predictionInclude(),
       orderBy: { submittedAt: 'desc' },
     });
   }
 
   async findRoomPredictions(roomId: string, user: AuthenticatedUser) {
-    if (user.role !== Role.ADMIN) {
-      await this.ensureRoomMember(roomId, user.id);
-    }
-
-    const members = await this.prisma.roomMember.findMany({
-      where: { roomId },
-      select: { userId: true },
-    });
+    await this.ensureRoomAccess(roomId, user);
 
     return this.prisma.prediction.findMany({
       where: {
-        userId: {
-          in: members.map((member) => member.userId),
-        },
+        roomId,
       },
       include: this.predictionInclude(),
       orderBy: { submittedAt: 'desc' },
     });
+  }
+
+  async findRoomMemberPredictions(
+    roomId: string,
+    userId: string,
+    viewer: AuthenticatedUser,
+  ) {
+    await this.ensureRoomAccess(roomId, viewer);
+    await this.ensureRoomMember(roomId, userId);
+
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        code: true,
+      },
+    });
+
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const predictions = await this.prisma.prediction.findMany({
+      where: {
+        roomId,
+        userId,
+      },
+      include: this.predictionInclude(),
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    return {
+      room,
+      user,
+      predictions,
+    };
   }
 
   async update(
@@ -185,6 +234,22 @@ export class PredictionsService {
     if (!member) {
       throw new ForbiddenException('User is not a member of this room');
     }
+  }
+
+  private async ensureRoomAccess(roomId: string, user: AuthenticatedUser) {
+    if (user.role === Role.ADMIN) {
+      const room = await this.prisma.room.findUnique({
+        where: { id: roomId },
+      });
+
+      if (!room) {
+        throw new NotFoundException('Room not found');
+      }
+
+      return;
+    }
+
+    await this.ensureRoomMember(roomId, user.id);
   }
 
   private async ensureMatchCanBePredicted(matchId: string) {
