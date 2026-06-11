@@ -5,7 +5,7 @@ import { ScoringService } from '../scoring/scoring.service';
 import { FootballDataClient } from './football-data.client';
 import { FootballDataMatch } from './types/football-data-match.type';
 
-interface FootballDataSyncResult {
+export interface FootballDataSyncResult {
   status: SyncStatus;
   totalMatches?: number;
   finishedMatches?: number;
@@ -94,7 +94,7 @@ export class FootballDataService {
 
       return {
         status: syncLog.status,
-        message: syncLog.message,
+        message: syncLog.message ?? undefined,
       };
     }
   }
