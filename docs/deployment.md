@@ -64,6 +64,7 @@ Variables obligatorias para produccion:
 | `SMTP_PASS` | Contrasena SMTP si aplica. |
 | `SMTP_FROM` | Remitente de correos transaccionales. |
 | `NGINX_PORT` | Puerto expuesto por Nginx. |
+| `FOOTBALL_DATA_SYNC_INTERVAL_MINUTES` | Frecuencia automatica de sincronizacion de Football-Data.org. |
 
 Ejemplo de produccion:
 
@@ -89,6 +90,7 @@ FOOTBALL_DATA_API_URL=https://api.football-data.org/v4
 FOOTBALL_DATA_API_KEY=<football-data-api-key>
 FOOTBALL_DATA_ALLOW_INSECURE_TLS=false
 FOOTBALL_DATA_COMPETITION=WC
+FOOTBALL_DATA_SYNC_INTERVAL_MINUTES=5
 
 SMTP_HOST=<smtp-host>
 SMTP_PORT=587

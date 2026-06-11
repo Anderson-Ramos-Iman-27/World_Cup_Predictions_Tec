@@ -5,15 +5,37 @@ import { ScoringService } from '../scoring/scoring.service';
 import { FootballDataClient } from './football-data.client';
 import { FootballDataMatch } from './types/football-data-match.type';
 
+interface FootballDataSyncResult {
+  status: SyncStatus;
+  totalMatches?: number;
+  finishedMatches?: number;
+  skippedMatches?: number;
+  message?: string;
+}
+
 @Injectable()
 export class FootballDataService {
+  private currentSync: Promise<FootballDataSyncResult> | null = null;
+
   constructor(
     private readonly footballDataClient: FootballDataClient,
     private readonly prisma: PrismaService,
     private readonly scoringService: ScoringService,
   ) {}
 
-  async syncMatches() {
+  async syncMatches(): Promise<FootballDataSyncResult> {
+    if (this.currentSync) {
+      return this.currentSync;
+    }
+
+    this.currentSync = this.performSyncMatches().finally(() => {
+      this.currentSync = null;
+    });
+
+    return this.currentSync;
+  }
+
+  private async performSyncMatches(): Promise<FootballDataSyncResult> {
     const startedAt = new Date();
 
     try {
