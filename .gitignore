@@ -61,3 +61,12 @@ tmp/
 temp/
 *.tmp
 *.swp
+
+
+# Extra
+doc/
+docs/
+COMO_LEVANTAR_O_PROJETO.md
+descripcion-proyecto.md
+informe.md
+plan-desarrollo.md
