@@ -223,7 +223,6 @@ model Prediction {
   room            Room?              @relation(fields: [roomId], references: [id], onDelete: SetNull)
   score           Score?
 
-  @@unique([userId, matchId, predictionType])
   @@index([roomId])
   @@index([matchId])
 }
