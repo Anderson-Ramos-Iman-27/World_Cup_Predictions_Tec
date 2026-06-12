@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../common/types/authenticated-user.type';
 import { RankingsService } from '../rankings/rankings.service';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { DeleteRoomDto } from './dto/delete-room.dto';
 import { JoinRoomDto } from './dto/join-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { RoomsService } from './rooms.service';
@@ -55,6 +56,15 @@ export class RoomsController {
     @Body() updateRoomDto: UpdateRoomDto,
   ) {
     return this.roomsService.update(roomId, user, updateRoomDto);
+  }
+
+  @Delete(':id')
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') roomId: string,
+    @Body() deleteRoomDto: DeleteRoomDto,
+  ) {
+    return this.roomsService.remove(roomId, user, deleteRoomDto);
   }
 
   @Post(':id/invitations')

@@ -10,6 +10,7 @@ import { AuthenticatedUser } from '../common/types/authenticated-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { RankingsService } from '../rankings/rankings.service';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { DeleteRoomDto } from './dto/delete-room.dto';
 import { JoinRoomDto } from './dto/join-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 
@@ -77,6 +78,27 @@ export class RoomsService {
 
     await this.rankingsService.invalidateRoomRankings([roomId]);
     return room;
+  }
+
+  async remove(
+    roomId: string,
+    user: AuthenticatedUser,
+    deleteRoomDto: DeleteRoomDto,
+  ) {
+    const room = await this.findRoomOrThrow(roomId);
+    await this.ensureCanManage(roomId, user);
+
+    if (deleteRoomDto.confirmName.trim() !== room.name) {
+      throw new ForbiddenException('Room name confirmation does not match');
+    }
+
+    await this.prisma.room.delete({
+      where: { id: roomId },
+    });
+
+    return {
+      message: 'Room deleted successfully',
+    };
   }
 
   async createInvitation(roomId: string, user: AuthenticatedUser) {

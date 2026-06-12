@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import { PrivateRoute } from '@/components/layout/private-route';
 import { useAuth } from '@/features/auth/auth-context';
@@ -15,6 +15,7 @@ import { apiRequest } from '@/lib/http-client';
 
 export default function RoomDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { user } = useAuth();
   const [room, setRoom] = useState<Room | null>(null);
   const [members, setMembers] = useState<RoomMember[]>([]);
@@ -25,6 +26,8 @@ export default function RoomDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [overlayMessage, setOverlayMessage] = useState('');
   const [memberToRemove, setMemberToRemove] = useState<RoomMember | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [copiedRoomCode, setCopiedRoomCode] = useState(false);
   const [roomForm, setRoomForm] = useState({
     color: '#1457d9',
@@ -156,6 +159,34 @@ export default function RoomDetailPage() {
     }
   }
 
+  async function handleDeleteRoom() {
+    if (!room) {
+      return;
+    }
+
+    setError('');
+    setMessage('');
+    setIsSaving(true);
+    setShowDeleteDialog(false);
+    setOverlayMessage('Eliminando sala...');
+
+    try {
+      await apiRequest(`/rooms/${room.id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({
+          confirmName: deleteConfirmName.trim(),
+        }),
+      });
+      router.replace('/rooms');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No se pudo eliminar la sala');
+    } finally {
+      setIsSaving(false);
+      setOverlayMessage('');
+      setDeleteConfirmName('');
+    }
+  }
+
   return (
     <PrivateRoute>
       <AppShell
@@ -171,6 +202,19 @@ export default function RoomDetailPage() {
             confirmLabel="Si, quitar integrante"
             onCancel={() => setMemberToRemove(null)}
             onConfirm={() => handleRemoveMember(memberToRemove)}
+          />
+        ) : null}
+        {showDeleteDialog && room ? (
+          <DeleteRoomDialog
+            confirmName={deleteConfirmName}
+            expectedName={room.name}
+            isBusy={isSaving}
+            onCancel={() => {
+              setShowDeleteDialog(false);
+              setDeleteConfirmName('');
+            }}
+            onChangeConfirmName={setDeleteConfirmName}
+            onConfirm={handleDeleteRoom}
           />
         ) : null}
         {isLoading ? <p className="text-sm text-slate-500">Cargando...</p> : null}
@@ -289,6 +333,14 @@ export default function RoomDetailPage() {
                       >
                         {isSaving ? 'Guardando...' : hasRoomChanges ? 'Guardar cambios' : 'Sin cambios'}
                       </button>
+                      <button
+                        className="h-11 rounded-xl border border-red-200 px-5 text-sm font-black text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={isSaving}
+                        type="button"
+                        onClick={() => setShowDeleteDialog(true)}
+                      >
+                        Eliminar sala
+                      </button>
                     </div>
                   </form>
                 ) : null}
@@ -358,6 +410,64 @@ export default function RoomDetailPage() {
         ) : null}
       </AppShell>
     </PrivateRoute>
+  );
+}
+
+function DeleteRoomDialog({
+  confirmName,
+  expectedName,
+  isBusy,
+  onCancel,
+  onChangeConfirmName,
+  onConfirm,
+}: {
+  confirmName: string;
+  expectedName: string;
+  isBusy: boolean;
+  onCancel: () => void;
+  onChangeConfirmName: (value: string) => void;
+  onConfirm: () => void;
+}) {
+  const isMatch = confirmName.trim() === expectedName;
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#06182c]/65 px-5 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <h2 className="text-xl font-black text-ink">Eliminar sala</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          Esta accion eliminara la sala de forma permanente. Para confirmar, escribe exactamente el nombre de la sala:
+          {' '}
+          <span className="font-black text-ink">{expectedName}</span>
+        </p>
+        <label className="mt-5 block">
+          <span className="text-sm font-bold text-ink">Nombre de la sala</span>
+          <input
+            className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
+            disabled={isBusy}
+            value={confirmName}
+            onChange={(event) => onChangeConfirmName(event.target.value)}
+          />
+        </label>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-ink transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy}
+            type="button"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+          <button
+            className="h-11 rounded-xl bg-red-600 px-5 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy || !isMatch}
+            type="button"
+            onClick={onConfirm}
+          >
+            Si, eliminar sala
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
