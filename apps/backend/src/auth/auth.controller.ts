@@ -21,15 +21,18 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  register(@Body() registerDto: RegisterDto) {
+  async register(@Body() registerDto: RegisterDto, @Req() request: Request) {
+    await this.authService.assertRegisterIpLimit(this.getClientIp(request));
     return this.authService.register(registerDto);
   }
 
   @Post('login')
   async login(
     @Body() loginDto: LoginDto,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
+    await this.authService.assertLoginIpLimit(this.getClientIp(request));
     const result = await this.authService.login(loginDto);
     this.setSessionCookies(response, result.accessToken, result.refreshToken);
     return { user: result.user };
@@ -38,27 +41,33 @@ export class AuthController {
   @Post('verify-email')
   async verifyEmail(
     @Body() verifyEmailDto: VerifyEmailDto,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
+    await this.authService.assertVerifyEmailIpLimit(this.getClientIp(request));
     const result = await this.authService.verifyEmail(verifyEmailDto);
     this.setSessionCookies(response, result.accessToken, result.refreshToken);
     return { user: result.user };
   }
 
   @Post('resend-verification-code')
-  resendVerificationCode(
+  async resendVerificationCode(
     @Body() resendVerificationCodeDto: ResendVerificationCodeDto,
+    @Req() request: Request,
   ) {
+    await this.authService.assertResendVerificationIpLimit(this.getClientIp(request));
     return this.authService.resendVerificationCode(resendVerificationCodeDto);
   }
 
   @Post('forgot-password')
-  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto, @Req() request: Request) {
+    await this.authService.assertForgotPasswordIpLimit(this.getClientIp(request));
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
   @Post('reset-password')
-  resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto, @Req() request: Request) {
+    await this.authService.assertResetPasswordIpLimit(this.getClientIp(request));
     return this.authService.resetPassword(resetPasswordDto);
   }
 
@@ -74,7 +83,15 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) response: Response) {
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authService.logoutSession(
+      this.getCookie(request, 'wcpp_session'),
+      this.getCookie(request, 'wcpp_refresh'),
+    );
+
     response.clearCookie('wcpp_session', {
       httpOnly: true,
       sameSite: 'lax',
@@ -139,6 +156,14 @@ export class AuthController {
       .map((cookie) => cookie.trim())
       .find((cookie) => cookie.startsWith(`${name}=`))
       ?.split('=')[1];
+  }
+
+  private getClientIp(request: Request) {
+    const forwarded = request.headers['x-forwarded-for'];
+    const forwardedIp = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0];
+    const ip = forwardedIp?.trim() || request.ip || request.socket.remoteAddress || 'unknown';
+
+    return ip.replace(/^::ffff:/, '');
   }
 
   private isProduction() {

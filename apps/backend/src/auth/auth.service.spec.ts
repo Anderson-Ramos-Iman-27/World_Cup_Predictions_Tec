@@ -11,10 +11,12 @@ describe('AuthService', () => {
     findByEmailWithPassword: jest.fn(),
     findByEmail: jest.fn(),
     toAuthenticatedUser: jest.fn(),
+    revokeSessions: jest.fn(),
   };
 
   const jwtService = {
     sign: jest.fn(),
+    verifyAsync: jest.fn(),
   };
 
   const prismaService = {
@@ -30,6 +32,7 @@ describe('AuthService', () => {
     },
     refreshToken: {
       create: jest.fn(),
+      findUnique: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
@@ -204,5 +207,24 @@ describe('AuthService', () => {
     await expect(
       authService.resendVerificationCode({ email: 'demo@example.com' }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('revokes server-side session state on logout', async () => {
+    jwtService.verifyAsync.mockResolvedValue({ sub: 'user-1', tokenVersion: 0 });
+    prismaService.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+    usersService.revokeSessions.mockResolvedValue(undefined);
+
+    await authService.logoutSession('old-session-token', 'old-refresh-token');
+
+    expect(prismaService.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: expect.any(Date),
+      },
+    });
+    expect(usersService.revokeSessions).toHaveBeenCalledWith('user-1');
   });
 });

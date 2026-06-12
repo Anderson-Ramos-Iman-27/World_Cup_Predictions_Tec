@@ -100,6 +100,15 @@ export class UsersService {
     });
   }
 
+  async revokeSessions(id: string) {
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        tokenVersion: { increment: 1 },
+      },
+    });
+  }
+
   toAuthenticatedUser(user: User): AuthenticatedUser {
     return {
       id: user.id,

@@ -17,6 +17,7 @@ async function bootstrap() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  (app as any).set('trust proxy', 1);
   app.setGlobalPrefix(apiPrefix);
   app.use((request: Request, response: Response, next: NextFunction) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');

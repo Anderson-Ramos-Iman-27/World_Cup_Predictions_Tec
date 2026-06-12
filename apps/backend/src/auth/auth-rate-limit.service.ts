@@ -16,4 +16,14 @@ export class AuthRateLimitService {
       );
     }
   }
+
+  async assertAllowedForIp(action: string, ip: string, limit: number, windowMs: number) {
+    const normalizedIp = this.normalizeIp(ip);
+
+    await this.assertAllowed(`ip:${action}:${normalizedIp}`, limit, windowMs);
+  }
+
+  private normalizeIp(ip: string) {
+    return ip.replace(/^::ffff:/, '').trim() || 'unknown';
+  }
 }

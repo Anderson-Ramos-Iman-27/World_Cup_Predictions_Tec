@@ -30,6 +30,60 @@ export class AuthService {
     private readonly authRateLimitService: AuthRateLimitService,
   ) {}
 
+  async assertRegisterIpLimit(ip: string) {
+    await this.authRateLimitService.assertAllowedForIp(
+      'register',
+      ip,
+      20,
+      60 * 60 * 1000,
+    );
+  }
+
+  async assertLoginIpLimit(ip: string) {
+    await this.authRateLimitService.assertAllowedForIp(
+      'login',
+      ip,
+      30,
+      15 * 60 * 1000,
+    );
+  }
+
+  async assertVerifyEmailIpLimit(ip: string) {
+    await this.authRateLimitService.assertAllowedForIp(
+      'verify-email',
+      ip,
+      20,
+      15 * 60 * 1000,
+    );
+  }
+
+  async assertResendVerificationIpLimit(ip: string) {
+    await this.authRateLimitService.assertAllowedForIp(
+      'resend-verification',
+      ip,
+      10,
+      10 * 60 * 1000,
+    );
+  }
+
+  async assertForgotPasswordIpLimit(ip: string) {
+    await this.authRateLimitService.assertAllowedForIp(
+      'forgot-password',
+      ip,
+      10,
+      10 * 60 * 1000,
+    );
+  }
+
+  async assertResetPasswordIpLimit(ip: string) {
+    await this.authRateLimitService.assertAllowedForIp(
+      'reset-password',
+      ip,
+      20,
+      15 * 60 * 1000,
+    );
+  }
+
   async register(registerDto: RegisterDto) {
     await this.authRateLimitService.assertAllowed(
       `register:${registerDto.email.toLowerCase()}`,
@@ -244,6 +298,21 @@ export class AuthService {
     };
   }
 
+  async logoutSession(sessionToken?: string, refreshToken?: string) {
+    const userId = (await this.resolveUserIdFromSessionToken(sessionToken))
+      ?? (await this.resolveUserIdFromRefreshToken(refreshToken));
+
+    if (!userId) {
+      return;
+    }
+
+    await this.revokeUserRefreshTokens(userId);
+    await this.usersService.revokeSessions(userId);
+    await this.createSecurityLog('LOGOUT_SUCCESS', {
+      userId,
+    });
+  }
+
   private async createAndSendEmailVerificationCode(userId: string, email: string) {
     const code = this.generateCode();
     const codeHash = await hash(code, 12);
@@ -397,6 +466,40 @@ export class AuthService {
         revokedAt: new Date(),
       },
     });
+  }
+
+  private async resolveUserIdFromSessionToken(sessionToken?: string) {
+    if (!sessionToken) {
+      return null;
+    }
+
+    try {
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        tokenVersion?: number;
+      }>(sessionToken);
+
+      return payload.sub;
+    } catch {
+      return null;
+    }
+  }
+
+  private async resolveUserIdFromRefreshToken(refreshToken?: string) {
+    if (!refreshToken) {
+      return null;
+    }
+
+    const record = await this.prisma.refreshToken.findUnique({
+      where: {
+        tokenHash: this.hashRefreshToken(refreshToken),
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    return record?.userId ?? null;
   }
 
   private async ensureEmailVerificationCooldown(userId: string) {
