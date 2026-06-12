@@ -127,12 +127,12 @@ export default function RankingPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
-        <div className="hidden lg:grid grid-cols-[70px_minmax(0,1fr)_90px_100px_130px] gap-3 border-b border-white/10 bg-[#082442] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-blue-200">
+        <div className="hidden lg:grid grid-cols-[72px_minmax(0,2.2fr)_110px_112px_160px] gap-6 border-b border-white/10 bg-[#082442] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-blue-200">
           <span>Pos.</span>
           <span>Participante</span>
-          <span className="text-right">Pred.</span>
-          <span className="text-right">Puntos</span>
-          <span className="text-right">Detalle</span>
+          <span className="text-center">Pred.</span>
+          <span className="text-center">Puntos</span>
+          <span className="text-center">Detalle</span>
         </div>
         {!isLoading && filteredRanking.length === 0 ? (
           <p className="px-5 py-4 text-sm text-slate-500">No se encontraron resultados.</p>
@@ -186,7 +186,7 @@ export default function RankingPage() {
         <div className="hidden lg:block">
           {pageEntries.map((entry) => (
             <div
-              className={`grid grid-cols-[70px_minmax(0,1fr)_90px_100px_130px] gap-3 px-5 py-4 text-sm ${
+              className={`grid grid-cols-[72px_minmax(0,2.2fr)_110px_112px_160px] items-center gap-6 px-5 py-5 text-sm ${
                 entry.userId === user?.id ? 'bg-blue-50' : 'bg-white'
               }`}
               id={`ranking-row-${entry.userId}`}
@@ -200,14 +200,14 @@ export default function RankingPage() {
                 <strong className="block truncate text-ink">{entry.name}</strong>
                 <span className="block truncate text-xs text-slate-500">{entry.email}</span>
               </Link>
-              <span className="text-right font-semibold text-slate-600">
+              <span className="text-center font-semibold text-slate-600">
                 {entry.predictionsCount}
               </span>
-              <span className="text-right font-black text-action">
+              <span className="text-center font-black text-action">
                 {entry.totalPoints}
               </span>
               <Link
-                className="text-right text-sm font-black text-action hover:text-[#0b4cc4]"
+                className="text-center text-sm font-black text-action hover:text-[#0b4cc4]"
                 href={`/users/${entry.userId}/predictions`}
               >
                 Ver predicciones

@@ -186,12 +186,12 @@ export default function RoomDetailPage() {
         ) : null}
 
         {room ? (
-          <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_0.85fr]">
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
               <div className="h-3" style={{ backgroundColor: room.color }} />
-              <div className="p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
+              <div className="p-4 sm:p-5">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-xs font-black uppercase tracking-[0.22em] text-action">
                         Código {room.code}
@@ -221,16 +221,16 @@ export default function RoomDetailPage() {
                       Comparte este código con tus invitados para que puedan unirse a la sala desde la pantalla de Salas.
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-col gap-3 sm:min-w-56">
                     <Link
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-action/20 bg-action px-4 text-sm font-black text-white transition hover:bg-blue-700"
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-action/20 bg-action px-4 text-sm font-black text-white transition hover:bg-blue-700 sm:w-auto"
                       href={`/rooms/${room.id}/predictions`}
                       onClick={() => setOverlayMessage('Abriendo predicciones de la sala...')}
                     >
                       Hacer predicciones en esta sala
                     </Link>
                     <Link
-                      className="text-sm font-bold text-action"
+                      className="text-center text-sm font-bold text-action sm:text-left"
                       href="/rooms"
                       onClick={() => setOverlayMessage('Volviendo a salas...')}
                     >
@@ -295,7 +295,7 @@ export default function RoomDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
               <h2 className="text-lg font-black text-ink">Podio de la sala</h2>
               <div className="mt-5 space-y-3">
                 {podium.length === 0 ? (
@@ -323,19 +323,19 @@ export default function RoomDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)] lg:col-span-2">
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)] lg:col-span-2">
               <h2 className="text-lg font-black text-ink">Integrantes</h2>
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 {members.map((member) => (
                   <div
-                    className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 px-4 py-3"
+                    className="flex flex-col gap-3 rounded-xl border border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                     key={member.id}
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-black text-ink">{member.user.name}</p>
                       <p className="text-xs text-slate-500">{member.user.email}</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
                         {member.role === 'OWNER' ? 'Propietario' : 'Miembro'}
                       </span>
