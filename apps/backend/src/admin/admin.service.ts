@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MatchSource, MatchStatus, Prisma, Role } from '@prisma/client';
+import { MatchSource, MatchStatus, Prisma, Role, UserStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../common/types/authenticated-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScoringService } from '../scoring/scoring.service';
@@ -94,6 +94,140 @@ export class AdminService {
     });
 
     return user;
+  }
+
+  async resetUserAccount(admin: AuthenticatedUser, userId: string) {
+    const current = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        _count: {
+          select: {
+            ownedRooms: true,
+            predictions: true,
+            roomMembership: true,
+          },
+        },
+      },
+    });
+
+    if (!current) {
+      throw new NotFoundException('User not found');
+    }
+
+    this.assertAdminCanManageUser(admin, current);
+
+    const hasLinkedData =
+      current._count.ownedRooms > 0 ||
+      current._count.predictions > 0 ||
+      current._count.roomMembership > 0;
+
+    const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.refreshToken.deleteMany({
+        where: { userId },
+      });
+      await tx.emailVerificationCode.deleteMany({
+        where: { userId },
+      });
+      await tx.passwordResetCode.deleteMany({
+        where: { userId },
+      });
+
+      if (!hasLinkedData) {
+        await tx.securityLog.deleteMany({
+          where: { userId },
+        });
+        await tx.user.delete({
+          where: { id: userId },
+        });
+
+        return {
+          mode: 'released' as const,
+          user: null,
+        };
+      }
+
+      const user = await tx.user.update({
+        where: { id: userId },
+        data: {
+          emailVerifiedAt: null,
+          status: UserStatus.PENDING_VERIFICATION,
+          tokenVersion: {
+            increment: 1,
+          },
+        },
+        select: this.userSelect(),
+      });
+
+      return {
+        mode: 'reset' as const,
+        user,
+      };
+    });
+
+    await this.createAuditLog(admin.id, 'RESET_USER_ACCOUNT', 'User', userId, {
+      previousStatus: current.status,
+      nextStatus: result.mode === 'reset' ? UserStatus.PENDING_VERIFICATION : 'DELETED_FOR_REREGISTRATION',
+      email: current.email,
+      hasLinkedData,
+      resetMode: result.mode,
+    });
+
+    if (result.mode === 'released') {
+      return {
+        message:
+          'La cuenta fue liberada por completo. El correo ya puede registrarse nuevamente desde cero.',
+        user: null,
+      };
+    }
+
+    return {
+      message:
+        'La cuenta fue reiniciada. El usuario debe verificar nuevamente su correo para ingresar.',
+      user: result.user,
+    };
+  }
+
+  async deleteUser(admin: AuthenticatedUser, userId: string) {
+    const current = await this.findUserOrThrow(userId);
+    this.assertAdminCanManageUser(admin, current);
+
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.room.deleteMany({
+        where: { ownerId: userId },
+      });
+      await tx.invitation.deleteMany({
+        where: { createdById: userId },
+      });
+      await tx.refreshToken.deleteMany({
+        where: { userId },
+      });
+      await tx.emailVerificationCode.deleteMany({
+        where: { userId },
+      });
+      await tx.passwordResetCode.deleteMany({
+        where: { userId },
+      });
+      await tx.securityLog.deleteMany({
+        where: { userId },
+      });
+      await tx.user.delete({
+        where: { id: userId },
+      });
+    });
+
+    await this.createAuditLog(admin.id, 'DELETE_USER', 'User', userId, {
+      email: current.email,
+      name: current.name,
+    });
+
+    return {
+      message: 'Usuario eliminado correctamente.',
+    };
   }
 
   async findRooms() {
@@ -461,5 +595,21 @@ export class AdminService {
       homeTeam: true,
       awayTeam: true,
     };
+  }
+
+  private assertAdminCanManageUser(
+    admin: AuthenticatedUser,
+    target: {
+      id: string;
+      role: Role;
+    },
+  ) {
+    if (target.id === admin.id) {
+      throw new BadRequestException('Admin cannot perform this action on their own account');
+    }
+
+    if (target.role === Role.ADMIN) {
+      throw new BadRequestException('No se puede aplicar esta accion sobre otra cuenta administradora');
+    }
   }
 }

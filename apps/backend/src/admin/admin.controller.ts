@@ -44,6 +44,22 @@ export class AdminController {
     return this.adminService.updateUserStatus(admin, userId, dto);
   }
 
+  @Post('users/:id/reset-account')
+  resetUserAccount(
+    @CurrentUser() admin: AuthenticatedUser,
+    @Param('id') userId: string,
+  ) {
+    return this.adminService.resetUserAccount(admin, userId);
+  }
+
+  @Delete('users/:id')
+  deleteUser(
+    @CurrentUser() admin: AuthenticatedUser,
+    @Param('id') userId: string,
+  ) {
+    return this.adminService.deleteUser(admin, userId);
+  }
+
   @Get('rooms')
   findRooms() {
     return this.adminService.findRooms();

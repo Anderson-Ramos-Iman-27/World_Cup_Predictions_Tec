@@ -73,6 +73,7 @@ type ConfirmationState = {
   message: string;
   confirmText: string;
   onConfirm: () => Promise<void>;
+  overlayMessage?: string;
 } | null;
 
 const tabs: Array<{ id: AdminTab; label: string }> = [
@@ -114,10 +115,13 @@ export default function AdminPage() {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<ConfirmationState>(null);
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+  const [deleteUserConfirmEmail, setDeleteUserConfirmEmail] = useState('');
 
   useEffect(() => {
     loadAdminData();
@@ -209,6 +213,7 @@ export default function AdminPage() {
       setError(error instanceof Error ? error.message : 'No se pudo completar la acción');
     } finally {
       setIsSaving(false);
+      setOverlayMessage('');
     }
   }
 
@@ -217,12 +222,14 @@ export default function AdminPage() {
     action: () => Promise<void>,
     message = 'Esta acción requiere confirmación antes de continuar.',
     confirmText = 'Sí, continuar',
+    nextOverlayMessage = 'Procesando accion...',
   ) {
     setConfirmation({
       title,
       message,
       confirmText,
       onConfirm: action,
+      overlayMessage: nextOverlayMessage,
     });
   }
 
@@ -233,6 +240,7 @@ export default function AdminPage() {
       return;
     }
 
+    setOverlayMessage(confirmation?.overlayMessage ?? 'Procesando accion...');
     setConfirmation(null);
     await executeSensitiveAction(action);
   }
@@ -265,6 +273,39 @@ export default function AdminPage() {
       `Se cambiará el estado de ${user.name} a ${getUserStatusLabel(status)}.`,
       'Sí, cambiar estado',
     );
+  }
+
+  function handleResetUserAccount(user: AdminUser) {
+    void runSensitiveAction(
+      'Resetear cuenta',
+      async () => {
+        const response = await apiRequest<{ message: string }>(`/admin/users/${user.id}/reset-account`, {
+          method: 'POST',
+        });
+        setMessage(response.message);
+      },
+      `Se reiniciara la cuenta de ${user.name}. Esto cerrara sus sesiones activas y dejara el correo otra vez pendiente de verificacion.`,
+      'Si, resetear cuenta',
+      'Reiniciando cuenta del usuario...',
+    );
+  }
+
+  async function handleDeleteUser() {
+    if (!userToDelete) {
+      return;
+    }
+
+    const targetUser = userToDelete;
+    setUserToDelete(null);
+    setOverlayMessage('Eliminando usuario...');
+
+    await executeSensitiveAction(async () => {
+      await apiRequest(`/admin/users/${targetUser.id}`, {
+        method: 'DELETE',
+      });
+      setDeleteUserConfirmEmail('');
+      setMessage(`Se elimino la cuenta ${targetUser.email}.`);
+    });
   }
 
   async function handleCreateMatch(event: FormEvent<HTMLFormElement>) {
@@ -570,6 +611,8 @@ export default function AdminPage() {
       >
         <AdminPageHeader activeTab={activeTab} />
 
+        {overlayMessage ? <LoadingOverlay message={overlayMessage} /> : null}
+
         {error ? <Alert tone="error">{error}</Alert> : null}
         {message ? <Alert tone="success">{message}</Alert> : null}
 
@@ -591,7 +634,7 @@ export default function AdminPage() {
           <section className="grid gap-4">
             {users.map((user) => (
               <AdminCard key={user.id}>
-                <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:items-center">
                   <div>
                     <p className="font-black text-ink">{user.name}</p>
                     <p className="text-sm text-slate-500">{user.email}</p>
@@ -611,6 +654,27 @@ export default function AdminPage() {
                     options={userStatuses}
                     onChange={(value) => handleUserStatus(user, value as AdminUser['status'])}
                   />
+                  <div className="flex flex-col gap-2 xl:min-w-44">
+                    <button
+                      className="h-11 rounded-xl border border-action/20 px-4 text-sm font-black text-action transition hover:border-action hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={isSaving || user.role === 'ADMIN'}
+                      type="button"
+                      onClick={() => handleResetUserAccount(user)}
+                    >
+                      Resetear cuenta
+                    </button>
+                    <button
+                      className="h-11 rounded-xl border border-red-200 px-4 text-sm font-black text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={isSaving || user.role === 'ADMIN'}
+                      type="button"
+                      onClick={() => {
+                        setDeleteUserConfirmEmail('');
+                        setUserToDelete(user);
+                      }}
+                    >
+                      Eliminar usuario
+                    </button>
+                  </div>
                 </div>
               </AdminCard>
             ))}
@@ -959,6 +1023,20 @@ export default function AdminPage() {
           </section>
         ) : null}
 
+        {userToDelete ? (
+          <DeleteUserDialog
+            confirmEmail={deleteUserConfirmEmail}
+            expectedEmail={userToDelete.email}
+            isBusy={isSaving}
+            onCancel={() => {
+              setUserToDelete(null);
+              setDeleteUserConfirmEmail('');
+            }}
+            onChangeConfirmEmail={setDeleteUserConfirmEmail}
+            onConfirm={handleDeleteUser}
+          />
+        ) : null}
+
         {confirmation ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
@@ -1208,6 +1286,78 @@ function AdminPageHeader({ activeTab }: { activeTab: AdminTab }) {
       <p className="text-xs font-black uppercase tracking-[0.18em] text-action">Administrador</p>
       <h1 className="mt-2 text-3xl font-black tracking-normal text-ink">{content[activeTab].title}</h1>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{content[activeTab].subtitle}</p>
+    </div>
+  );
+}
+
+function DeleteUserDialog({
+  confirmEmail,
+  expectedEmail,
+  isBusy,
+  onCancel,
+  onChangeConfirmEmail,
+  onConfirm,
+}: {
+  confirmEmail: string;
+  expectedEmail: string;
+  isBusy: boolean;
+  onCancel: () => void;
+  onChangeConfirmEmail: (value: string) => void;
+  onConfirm: () => void;
+}) {
+  const isMatch = confirmEmail.trim().toLowerCase() === expectedEmail.toLowerCase();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <h2 className="text-xl font-black text-ink">Eliminar usuario</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          Esta accion eliminara la cuenta y sus datos relacionados. Para confirmar, escribe exactamente este correo:
+          {' '}
+          <span className="font-black text-ink">{expectedEmail}</span>
+        </p>
+        <label className="mt-5 block">
+          <span className="text-sm font-bold text-ink">Correo del usuario</span>
+          <input
+            className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-4 text-sm outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
+            disabled={isBusy}
+            value={confirmEmail}
+            onChange={(event) => onChangeConfirmEmail(event.target.value)}
+          />
+        </label>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-ink transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy}
+            type="button"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+          <button
+            className="h-11 rounded-xl bg-red-600 px-5 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy || !isMatch}
+            type="button"
+            onClick={onConfirm}
+          >
+            Si, eliminar usuario
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#06182c]/70 px-5 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
+        <p className="mt-4 text-base font-black text-ink">{message}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Actualizando informacion del panel administrativo.
+        </p>
+      </div>
     </div>
   );
 }
