@@ -54,7 +54,7 @@ export default function RoomPredictionsPage() {
         ) : null}
 
         {room ? (
-          <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
+          <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_34px_rgba(15,35,66,0.10)] sm:p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-action">
@@ -67,7 +67,7 @@ export default function RoomPredictionsPage() {
                 </p>
               </div>
               <Link
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-black text-ink transition hover:border-action hover:text-action"
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-black text-ink transition hover:border-action hover:text-action md:w-auto"
                 href={`/rooms/${room.id}`}
                 onClick={() => setNavigationMessage('Volviendo al detalle de la sala...')}
               >

@@ -49,18 +49,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (storedUser) {
       setUser(JSON.parse(storedUser) as AuthUser);
+
+      apiRequest<AuthUser>('/auth/me')
+        .then((currentUser) => {
+          window.localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+          setUser(currentUser);
+        })
+        .catch(() => {
+          window.localStorage.removeItem(USER_KEY);
+          setUser(null);
+        })
+        .finally(() => setIsLoading(false));
+
+      return;
     }
 
-    apiRequest<AuthUser>('/auth/me')
-      .then((currentUser) => {
-        window.localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-        setUser(currentUser);
-      })
-      .catch(() => {
-        window.localStorage.removeItem(USER_KEY);
-        setUser(null);
-      })
-      .finally(() => setIsLoading(false));
+    setUser(null);
+    setIsLoading(false);
   }, []);
 
   const persistSession = useCallback((response: AuthResponse) => {

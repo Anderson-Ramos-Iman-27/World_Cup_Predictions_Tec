@@ -173,10 +173,10 @@ export default function MatchDetailPage() {
         </div>
       ) : null}
       {match ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
-          <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_0.85fr]">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-action">
                   {getStatusLabel(match.status)}
                 </p>
@@ -188,7 +188,7 @@ export default function MatchDetailPage() {
                 </p>
               </div>
               <Link
-                className="text-sm font-bold text-action"
+                className="self-start text-sm font-bold text-action sm:self-auto"
                 href="/matches"
                 onClick={() => setNavigationMessage('Volviendo a partidos...')}
               >
@@ -196,16 +196,16 @@ export default function MatchDetailPage() {
               </Link>
             </div>
 
-            <div className="mt-8 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+            <div className="mt-8 grid items-center gap-4 sm:grid-cols-[1fr_auto_1fr]">
               <TeamBadge
                 name={match.homeTeam.name}
                 crestUrl={match.homeTeam.crestUrl}
               />
-              <div className="rounded-lg bg-slate-100 px-5 py-3 text-center text-ink">
+              <div className="rounded-xl bg-slate-100 px-4 py-3 text-center text-ink sm:px-5">
                 <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
                   {match.status === 'FINISHED' ? 'Resultado final' : 'VS'}
                 </p>
-                <p className="mt-1 text-xl font-black sm:text-2xl">
+                <p className="mt-1 text-lg font-black sm:text-2xl">
                   {match.status === 'FINISHED'
                     ? `${match.homeScore ?? '-'} - ${match.awayScore ?? '-'}`
                     : 'Pendiente'}
@@ -220,10 +220,10 @@ export default function MatchDetailPage() {
 
             {user ? (
               <form className="mt-8 border-t border-slate-100 pt-6" onSubmit={handleSubmit}>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="min-w-0">
                     <h3 className="text-lg font-black text-ink">Opciones de predicción</h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
                       {roomId
                         ? 'Elige una sola modalidad. Esta prediccion contara solo para el podio de la sala.'
                         : 'Elige una sola modalidad. Cuenta para tu ranking global y para todas tus salas.'}
@@ -250,9 +250,13 @@ export default function MatchDetailPage() {
                     points="5 pts"
                     title="Resultado exacto"
                     description="Predice el marcador final completo."
+                    summary={getPredictionSummary(
+                      matchPredictions.find((prediction) => prediction.predictionType === 'EXACT_SCORE'),
+                      match,
+                    )}
                     onSelect={() => setPredictionMode('EXACT_SCORE')}
                   >
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <ScoreInput
                         label={match.homeTeam.shortName ?? match.homeTeam.name}
                         value={homeScore}
@@ -273,6 +277,10 @@ export default function MatchDetailPage() {
                     points="3 pts"
                     title="Ganador o empate correcto"
                     description="Elige quién gana o si el partido termina empatado."
+                    summary={getPredictionSummary(
+                      matchPredictions.find((prediction) => prediction.predictionType === 'WINNER'),
+                      match,
+                    )}
                     onSelect={() => setPredictionMode('WINNER')}
                   >
                     <OutcomePicker
@@ -290,6 +298,10 @@ export default function MatchDetailPage() {
                     points="2 pts"
                     title="Diferencia de goles correcta"
                     description="Elige el ganador y por cuántos goles gana. El empate no aplica en esta modalidad."
+                    summary={getPredictionSummary(
+                      matchPredictions.find((prediction) => prediction.predictionType === 'GOAL_DIFFERENCE'),
+                      match,
+                    )}
                     onSelect={() => setPredictionMode('GOAL_DIFFERENCE')}
                   >
                     <div className="grid gap-3">
@@ -311,7 +323,7 @@ export default function MatchDetailPage() {
                 </div>
 
                 <button
-                  className="mt-5 h-11 w-full rounded-lg bg-action px-4 text-sm font-bold text-white hover:bg-[#0b4cc4] disabled:cursor-not-allowed disabled:bg-slate-400"
+                  className="mt-5 h-12 w-full rounded-xl bg-action px-4 text-sm font-bold text-white hover:bg-[#0b4cc4] disabled:cursor-not-allowed disabled:bg-slate-400"
                   type="submit"
                   disabled={!predictionAllowed || isSubmitting || activeModeAlreadySubmitted || allModesSubmitted}
                 >
@@ -343,22 +355,22 @@ export default function MatchDetailPage() {
             ) : null}
           </section>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             <h2 className="text-lg font-bold text-ink">Reglas de puntuación</h2>
             {!user ? (
-              <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-4">
+              <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-4">
                 <p className="text-sm font-semibold text-action">
                   Inicia sesión o crea una cuenta para guardar tu predicción.
                 </p>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <div className="mt-3 grid gap-2 sm:flex">
                   <Link
-                    className="inline-flex h-10 items-center justify-center rounded-lg bg-action px-4 text-sm font-bold text-white"
+                    className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-action px-4 text-sm font-bold text-white sm:w-auto"
                     href="/login"
                   >
                     Iniciar sesión
                   </Link>
                   <Link
-                    className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-ink"
+                    className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-ink sm:w-auto"
                     href="/register"
                   >
                     Crear cuenta
@@ -439,9 +451,34 @@ function buildPredictionPayload(
   };
 }
 
+function getPredictionSummary(
+  prediction: Prediction | undefined,
+  match: Match,
+) {
+  if (!prediction) {
+    return 'Predicción guardada';
+  }
+
+  if (prediction.predictionType === 'EXACT_SCORE') {
+    return `${match.homeTeam.shortName ?? match.homeTeam.name}: ${prediction.homeScore ?? 0} - ${match.awayTeam.shortName ?? match.awayTeam.name}: ${prediction.awayScore ?? 0}`;
+  }
+
+  if (prediction.predictionType === 'WINNER') {
+    return formatOutcome(prediction.predictedWinner, match);
+  }
+
+  if (prediction.predictionType === 'GOAL_DIFFERENCE') {
+    const winner = formatOutcome(prediction.predictedWinner, match);
+    const difference = prediction.goalDifference ?? 0;
+    return `${winner} por ${difference} gol${difference === 1 ? '' : 'es'}`;
+  }
+
+  return 'Predicción guardada';
+}
+
 function PointRule({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
       <span className="font-semibold">{label}</span>
       <span className="font-black text-action">{value}</span>
     </div>
@@ -456,6 +493,7 @@ function PredictionModeCard({
   isSubmitted,
   onSelect,
   points,
+  summary,
   title,
 }: {
   active: boolean;
@@ -465,6 +503,7 @@ function PredictionModeCard({
   isSubmitted: boolean;
   onSelect: () => void;
   points: string;
+  summary?: string;
   title: string;
 }) {
   const cardStateClass = isSubmitted
@@ -474,11 +513,11 @@ function PredictionModeCard({
       : 'border-slate-200 bg-white';
 
   return (
-    <section
-      className={`rounded-2xl border p-4 transition ${cardStateClass}`}
-    >
+    <section className={`rounded-2xl border p-4 transition sm:p-5 ${cardStateClass}`}>
       <button
-        className="flex w-full items-start justify-between gap-4 text-left disabled:cursor-default"
+        className={`flex w-full flex-col items-start justify-between gap-3 text-left disabled:cursor-default sm:flex-row sm:items-start ${
+          isSubmitted ? 'pointer-events-none' : ''
+        }`}
         disabled={disabled}
         type="button"
         onClick={onSelect}
@@ -503,7 +542,7 @@ function PredictionModeCard({
             ) : null}
           </span>
         </span>
-        <span className="flex shrink-0 flex-col items-end gap-1">
+        <span className="flex w-full shrink-0 flex-row items-center justify-between gap-2 sm:w-auto sm:flex-col sm:items-end">
           <span
             className={`rounded-full bg-white px-3 py-1 text-xs font-black shadow-sm ${
               isSubmitted ? 'text-emerald-700' : 'text-action'
@@ -518,7 +557,16 @@ function PredictionModeCard({
           ) : null}
         </span>
       </button>
-      {active ? <div className="mt-4">{children}</div> : null}
+      {isSubmitted ? (
+        <div className="mt-4 rounded-xl border border-emerald-200 bg-white/70 px-4 py-3">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">
+            Predicción guardada
+          </p>
+          <p className="mt-1 text-sm font-black text-ink">{summary ?? 'Registrada'}</p>
+        </div>
+      ) : active ? (
+        <div className="mt-4">{children}</div>
+      ) : null}
     </section>
   );
 }
@@ -585,6 +633,18 @@ function OutcomeButton({
   );
 }
 
+function formatOutcome(outcome: PredictionOutcome | null | undefined, match: Match) {
+  if (outcome === 'HOME') {
+    return `Gana ${match.homeTeam.shortName ?? match.homeTeam.name}`;
+  }
+
+  if (outcome === 'AWAY') {
+    return `Gana ${match.awayTeam.shortName ?? match.awayTeam.name}`;
+  }
+
+  return 'Empate';
+}
+
 function ScoreInput({
   label,
   min = 0,
@@ -600,7 +660,7 @@ function ScoreInput({
     <label className="block">
       <span className="text-sm font-bold text-ink">{label}</span>
       <input
-        className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-action"
+        className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-action"
         min={min}
         type="number"
         value={value}

@@ -83,7 +83,7 @@ function VerifyEmailForm() {
   return (
     <AuthShell
       title="Verifica tu correo"
-      subtitle="Ingresa el código enviado a tu correo para activar tu cuenta."
+      subtitle="Ingresa el código enviado a tu correo para activar tu cuenta. (Revisa tu bandeja de entrada y spam)"
       footerText="Ya verificaste tu cuenta?"
       footerHref="/login"
       footerAction="Iniciar sesion"
