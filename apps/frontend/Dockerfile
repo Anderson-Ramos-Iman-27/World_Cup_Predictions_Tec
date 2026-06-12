@@ -7,6 +7,8 @@ RUN npm ci --workspace apps/frontend --include-workspace-root=false
 FROM node:22-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/frontend ./apps/frontend
 WORKDIR /app/apps/frontend

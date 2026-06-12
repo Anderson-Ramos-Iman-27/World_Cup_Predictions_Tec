@@ -22,8 +22,8 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto, @Req() request: Request) {
-    await this.authService.assertRegisterIpLimit(this.getClientIp(request));
-    return this.authService.register(registerDto);
+    const clientIp = this.getClientIp(request);
+    return this.authService.register(registerDto, clientIp);
   }
 
   @Post('login')

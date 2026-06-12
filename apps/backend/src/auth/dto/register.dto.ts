@@ -1,4 +1,11 @@
-import { IsEmail, IsString, Length, Matches, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  MinLength,
+} from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -12,7 +19,11 @@ export class RegisterDto {
   @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, {
     message:
-      'La contraseña debe incluir mayúscula, minúscula, número y carácter especial',
+      'La contrasena debe incluir mayuscula, minuscula, numero y caracter especial',
   })
   password!: string;
+
+  @IsOptional()
+  @IsString()
+  captchaToken?: string;
 }

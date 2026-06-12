@@ -57,6 +57,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:?SMTP_FROM is required}
       EMAIL_CODE_EXPIRES_MINUTES: ${EMAIL_CODE_EXPIRES_MINUTES:-15}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       RUN_PRISMA_MIGRATIONS: "true"
       BOOTSTRAP_ADMIN: "true"
     restart: unless-stopped
@@ -182,10 +183,13 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      args: &frontend-build-args
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
     environment: &frontend-env
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
     restart: unless-stopped
     depends_on:
       backend-1:
@@ -203,6 +207,8 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      args:
+        <<: *frontend-build-args
     environment:
       <<: *frontend-env
     restart: unless-stopped
@@ -222,6 +228,8 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      args:
+        <<: *frontend-build-args
     environment:
       <<: *frontend-env
     restart: unless-stopped
@@ -241,6 +249,8 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      args:
+        <<: *frontend-build-args
     environment:
       <<: *frontend-env
     restart: unless-stopped
@@ -260,6 +270,8 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      args:
+        <<: *frontend-build-args
     environment:
       <<: *frontend-env
     restart: unless-stopped

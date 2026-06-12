@@ -23,3 +23,7 @@ export function getApiBaseUrl() {
 
   return configuredUrl ?? 'http://localhost:3001/api';
 }
+
+export function getTurnstileSiteKey() {
+  return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
+}

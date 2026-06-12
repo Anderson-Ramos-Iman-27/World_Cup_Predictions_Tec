@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -29,15 +30,6 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly authRateLimitService: AuthRateLimitService,
   ) {}
-
-  async assertRegisterIpLimit(ip: string) {
-    await this.authRateLimitService.assertAllowedForIp(
-      'register',
-      ip,
-      20,
-      60 * 60 * 1000,
-    );
-  }
 
   async assertLoginIpLimit(ip: string) {
     await this.authRateLimitService.assertAllowedForIp(
@@ -84,16 +76,18 @@ export class AuthService {
     );
   }
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto, clientIp?: string) {
+    await this.verifyRegisterCaptcha(registerDto.captchaToken, clientIp);
     await this.authRateLimitService.assertAllowed(
       `register:${registerDto.email.toLowerCase()}`,
       5,
       60 * 60 * 1000,
     );
+    const { captchaToken: _captchaToken, ...registerInput } = registerDto;
     const passwordHash = await hash(registerDto.password, 12);
     const user = await this.usersService.create({
-      name: registerDto.name,
-      email: registerDto.email.toLowerCase(),
+      name: registerInput.name,
+      email: registerInput.email.toLowerCase(),
       passwordHash,
       role: Role.USER,
       status: UserStatus.PENDING_VERIFICATION,
@@ -589,5 +583,44 @@ export class AuthService {
         metadata: data.metadata as Prisma.InputJsonValue | undefined,
       },
     });
+  }
+
+  private async verifyRegisterCaptcha(captchaToken?: string, clientIp?: string) {
+    const turnstileSecret = this.configService.get<string>('TURNSTILE_SECRET_KEY');
+
+    if (!turnstileSecret) {
+      return;
+    }
+
+    if (!captchaToken) {
+      throw new ForbiddenException('Completa el captcha antes de registrarte');
+    }
+
+    const response = await fetch(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          secret: turnstileSecret,
+          response: captchaToken,
+          ...(clientIp ? { remoteip: clientIp } : {}),
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new ForbiddenException('No se pudo validar el captcha');
+    }
+
+    const result = (await response.json()) as {
+      success?: boolean;
+    };
+
+    if (!result.success) {
+      throw new ForbiddenException('Captcha invalido o expirado');
+    }
   }
 }

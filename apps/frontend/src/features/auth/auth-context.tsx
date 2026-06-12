@@ -21,6 +21,7 @@ type RegisterInput = {
   name: string;
   email: string;
   password: string;
+  captchaToken?: string;
 };
 
 type AuthContextValue = {
