@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PROTECTED_PATH_PREFIXES = [
   '/admin',
-  '/dashboard',
   '/predictions',
   '/profile',
   '/rooms',
@@ -50,7 +49,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',
-    '/dashboard/:path*',
     '/predictions/:path*',
     '/profile/:path*',
     '/rooms/:path*',
