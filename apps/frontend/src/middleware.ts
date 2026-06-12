@@ -15,10 +15,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (!isRscRequest(request)) {
+    return NextResponse.next();
+  }
+
   const sessionCookie = request.cookies.get('wcpp_session')?.value;
 
   if (!sessionCookie) {
-    return redirectToLogin(request);
+    return unauthorizedResponse(false);
   }
 
   try {
