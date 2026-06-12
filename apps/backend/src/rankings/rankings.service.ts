@@ -77,6 +77,10 @@ export class RankingsService {
         role: {
           not: 'ADMIN',
         },
+        status: 'ACTIVE',
+        emailVerifiedAt: {
+          not: null,
+        },
       },
       select: {
         id: true,

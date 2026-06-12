@@ -29,11 +29,11 @@ describe('RankingsService', () => {
 
   it('builds global ranking by summing all scored predictions', async () => {
     prisma.user.findMany.mockResolvedValue([
-      userWithPredictions('user-1', 'Ana', [
+      verifiedUserWithPredictions('user-1', 'Ana', [
         userPrediction(5, '2026-06-10T10:00:00.000Z'),
         userPrediction(3, '2026-06-10T11:00:00.000Z'),
       ]),
-      userWithPredictions('user-2', 'Luis', [
+      verifiedUserWithPredictions('user-2', 'Luis', [
         userPrediction(10, '2026-06-10T12:00:00.000Z'),
       ]),
     ]);
@@ -102,10 +102,10 @@ describe('RankingsService', () => {
 
   it('breaks ties by earliest prediction time instead of name', async () => {
     prisma.user.findMany.mockResolvedValue([
-      userWithPredictions('user-1', 'Zoe', [
+      verifiedUserWithPredictions('user-1', 'Zoe', [
         userPrediction(5, '2026-06-10T09:00:00.000Z'),
       ]),
-      userWithPredictions('user-2', 'Ana', [
+      verifiedUserWithPredictions('user-2', 'Ana', [
         userPrediction(5, '2026-06-10T10:00:00.000Z'),
       ]),
     ]);
@@ -126,6 +126,22 @@ describe('RankingsService', () => {
         firstPredictionAt: '2026-06-10T10:00:00.000Z',
       }),
     ]);
+  });
+
+  it('requests only verified active non admin users in global ranking', async () => {
+    prisma.user.findMany.mockResolvedValue([]);
+
+    await service.getGlobalRanking();
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          role: { not: 'ADMIN' },
+          status: 'ACTIVE',
+          emailVerifiedAt: { not: null },
+        },
+      }),
+    );
   });
 
   it('breaks room ranking ties by earliest prediction time', async () => {
@@ -188,7 +204,7 @@ describe('RankingsService', () => {
     ]);
   });
 
-  function userWithPredictions(
+  function verifiedUserWithPredictions(
     userId: string,
     name: string,
     predictions: Array<{ submittedAt: Date; score: { totalPoints: number } | null }>,
@@ -198,6 +214,8 @@ describe('RankingsService', () => {
       id: userId,
       name,
       email: `${userId}@example.com`,
+      status: 'ACTIVE',
+      emailVerifiedAt: new Date('2026-06-10T00:00:00.000Z'),
       predictions,
     };
   }
