@@ -31,11 +31,17 @@ export class AuthService {
   ) {}
 
   async assertRegisterIpLimit(ip: string) {
+    const limit = this.configService.get<number>('REGISTER_IP_LIMIT', 10);
+    const windowMinutes = this.configService.get<number>(
+      'REGISTER_IP_WINDOW_MINUTES',
+      60,
+    );
+
     await this.authRateLimitService.assertAllowedForIp(
       'register',
       ip,
-      20,
-      60 * 60 * 1000,
+      limit,
+      windowMinutes * 60 * 1000,
     );
   }
 
