@@ -32,18 +32,18 @@ export async function middleware(request: NextRequest) {
     });
 
     if (!response.ok) {
-      return redirectToLogin(request, true);
+      return rejectUnauthorizedRequest(request, true);
     }
 
     const user = (await response.json()) as { role?: string };
 
     if (pathname.startsWith('/admin') && user.role !== 'ADMIN') {
-      return redirectByRole(request, user.role);
+      return rejectForbiddenRequest(request, user.role);
     }
 
     return NextResponse.next();
   } catch {
-    return redirectToLogin(request, true);
+    return rejectUnauthorizedRequest(request, true);
   }
 }
 
@@ -112,4 +112,73 @@ function redirectToLogin(request: NextRequest, clearCookies = false) {
 function redirectByRole(request: NextRequest, role?: string) {
   const target = role === 'ADMIN' ? '/admin' : '/dashboard';
   return NextResponse.redirect(new URL(target, request.url));
+}
+
+function rejectUnauthorizedRequest(request: NextRequest, clearCookies = false) {
+  if (isRscRequest(request)) {
+    return unauthorizedResponse(clearCookies);
+  }
+
+  return redirectToLogin(request, clearCookies);
+}
+
+function rejectForbiddenRequest(request: NextRequest, role?: string) {
+  if (isRscRequest(request)) {
+    return new NextResponse(
+      JSON.stringify({
+        message: 'Forbidden',
+        statusCode: 403,
+      }),
+      {
+        status: 403,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'no-store',
+        },
+      },
+    );
+  }
+
+  return redirectByRole(request, role);
+}
+
+function unauthorizedResponse(clearCookies: boolean) {
+  const response = new NextResponse(
+    JSON.stringify({
+      message: 'Invalid or expired token',
+      statusCode: 401,
+    }),
+    {
+      status: 401,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+      },
+    },
+  );
+
+  if (clearCookies) {
+    response.cookies.set('wcpp_session', '', {
+      path: '/',
+      expires: new Date(0),
+    });
+    response.cookies.set('wcpp_csrf', '', {
+      path: '/',
+      expires: new Date(0),
+    });
+    response.cookies.set('wcpp_refresh', '', {
+      path: '/api/auth/refresh',
+      expires: new Date(0),
+    });
+  }
+
+  return response;
+}
+
+function isRscRequest(request: NextRequest) {
+  return (
+    request.headers.has('rsc') ||
+    request.headers.has('next-router-state-tree') ||
+    request.nextUrl.searchParams.has('_rsc')
+  );
 }
