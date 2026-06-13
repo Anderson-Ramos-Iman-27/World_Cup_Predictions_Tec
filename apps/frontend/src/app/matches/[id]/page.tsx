@@ -389,7 +389,7 @@ export default function MatchDetailPage() {
                 <PointRule label="Resultado exacto" value="5 pts" />
                 <PointRule label="Ganador o empate correcto" value="3 pts" />
                 <PointRule label="Diferencia de goles correcta" value="2 pts" />
-                <PointRule label="Bonus por cada 4 aciertos consecutivos" value="+2 pts" />
+                <PointRule label="Bonus por cada 3 aciertos consecutivos" value="+2 pts" />
                 <PointRule label="Predicción con más de 24 h" value="+1 pt" />
               </div>
               <p className="mt-3 text-xs font-semibold text-slate-500">

@@ -377,7 +377,7 @@ function getBonusDetail(prediction: Prediction) {
   const bonusPoints = prediction.score.bonusPoints ?? 0;
 
   if (bonusPoints <= 0) {
-    return 'Esta prediccion no obtuvo bonus. El bonus de 24 horas solo aplica si la prediccion acierta, y el bonus por racha aplica al cuarto acierto consecutivo.';
+    return 'Esta prediccion no obtuvo bonus. El bonus de 24 horas solo aplica si la prediccion acierta, y el bonus por racha aplica al tercer acierto consecutivo.';
   }
 
   const reason = (prediction.score.reason ?? '').toLowerCase();
@@ -388,7 +388,7 @@ function getBonusDetail(prediction: Prediction) {
   }
 
   if (reason.includes('racha')) {
-    details.push('Bonus por racha: +2 puntos por cada 4 aciertos consecutivos.');
+    details.push('Bonus por racha: +2 puntos por cada 3 aciertos consecutivos.');
   }
 
   if (details.length === 0) {

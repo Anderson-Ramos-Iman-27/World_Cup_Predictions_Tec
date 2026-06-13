@@ -42,7 +42,7 @@ export class ScoringService {
 
   calculatePredictionScore(
     prediction: FinishedPrediction,
-    consecutiveWinnerHits: number,
+    consecutiveCorrectHitsBeforeCurrent: number,
   ): ScoreCalculation {
     const { match } = prediction;
 
@@ -84,7 +84,9 @@ export class ScoringService {
       differenceCorrect,
     );
     const streakBonus =
-      winnerCorrect && consecutiveWinnerHits > 0 && consecutiveWinnerHits % 4 === 0
+      basePoints > 0 &&
+      consecutiveCorrectHitsBeforeCurrent >= 2 &&
+      (consecutiveCorrectHitsBeforeCurrent + 1) % 3 === 0
         ? 2
         : 0;
     const anticipationBonus = earlyPrediction && basePoints > 0 ? 1 : 0;
@@ -258,75 +260,44 @@ export class ScoringService {
       ],
     });
 
-    let consecutiveWinnerHits = 0;
+    let consecutiveCorrectHits = 0;
     const roomIds = new Set<string>();
     let invalidateGlobal = false;
-    const predictionsByMatch = this.groupPredictionsByMatch(predictions);
+    for (const prediction of predictions) {
+      const calculation = this.calculatePredictionScore(
+        prediction,
+        consecutiveCorrectHits,
+      );
 
-    for (const matchPredictions of predictionsByMatch) {
-      const actualDifference =
-        matchPredictions[0].match.homeScore! - matchPredictions[0].match.awayScore!;
-      const actualOutcome = this.getOutcomeFromDifference(actualDifference);
-      const hasWinnerHit = matchPredictions.some((prediction) => {
-        const predictedOutcome =
-          prediction.predictedWinner ??
-          (prediction.homeScore !== null && prediction.awayScore !== null
-            ? this.getOutcomeFromDifference(prediction.homeScore - prediction.awayScore)
-            : null);
-
-        return predictedOutcome === actualOutcome;
+      await this.prisma.score.upsert({
+        where: { predictionId: prediction.id },
+        update: {
+          basePoints: calculation.basePoints,
+          bonusPoints: calculation.bonusPoints,
+          totalPoints: calculation.totalPoints,
+          reason: calculation.reason,
+          calculatedAt: new Date(),
+        },
+        create: {
+          predictionId: prediction.id,
+          basePoints: calculation.basePoints,
+          bonusPoints: calculation.bonusPoints,
+          totalPoints: calculation.totalPoints,
+          reason: calculation.reason,
+        },
       });
 
-      consecutiveWinnerHits = hasWinnerHit ? consecutiveWinnerHits + 1 : 0;
+      consecutiveCorrectHits = calculation.basePoints > 0 ? consecutiveCorrectHits + 1 : 0;
 
-      for (const prediction of matchPredictions) {
-        const calculation = this.calculatePredictionScore(
-          prediction,
-          consecutiveWinnerHits,
-        );
-
-        await this.prisma.score.upsert({
-          where: { predictionId: prediction.id },
-          update: {
-            basePoints: calculation.basePoints,
-            bonusPoints: calculation.bonusPoints,
-            totalPoints: calculation.totalPoints,
-            reason: calculation.reason,
-            calculatedAt: new Date(),
-          },
-          create: {
-            predictionId: prediction.id,
-            basePoints: calculation.basePoints,
-            bonusPoints: calculation.bonusPoints,
-            totalPoints: calculation.totalPoints,
-            reason: calculation.reason,
-          },
-        });
-
-        if (prediction.roomId) {
-          roomIds.add(prediction.roomId);
-        } else {
-          invalidateGlobal = true;
-        }
+      if (prediction.roomId) {
+        roomIds.add(prediction.roomId);
+      } else {
+        invalidateGlobal = true;
       }
     }
 
     await this.invalidateRankingCaches([...roomIds], invalidateGlobal);
     return predictions.length;
-  }
-
-  private groupPredictionsByMatch<T extends { match: { id: string } }>(
-    predictions: T[],
-  ) {
-    const groups = new Map<string, T[]>();
-
-    for (const prediction of predictions) {
-      const current = groups.get(prediction.match.id) ?? [];
-      current.push(prediction);
-      groups.set(prediction.match.id, current);
-    }
-
-    return [...groups.values()];
   }
 
   private async invalidateRankingCaches(
