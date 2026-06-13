@@ -255,11 +255,16 @@ export class RankingsService {
         },
         score: true,
       },
-      orderBy: {
-        match: {
-          utcDate: 'desc',
+      orderBy: [
+        {
+          match: {
+            utcDate: 'asc',
+          },
         },
-      },
+        {
+          submittedAt: 'asc',
+        },
+      ],
     });
 
     return {
@@ -323,11 +328,16 @@ export class RankingsService {
         },
         score: true,
       },
-      orderBy: {
-        match: {
-          utcDate: 'desc',
+      orderBy: [
+        {
+          match: {
+            utcDate: 'asc',
+          },
         },
-      },
+        {
+          submittedAt: 'asc',
+        },
+      ],
     });
 
     return {

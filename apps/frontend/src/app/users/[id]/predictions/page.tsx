@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -29,6 +29,7 @@ export default function UserPredictionsPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [navigationMessage, setNavigationMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     apiRequest<UserPredictionHistory>(`/rankings/users/${params.id}/history`)
@@ -55,6 +56,44 @@ export default function UserPredictionsPage() {
       ),
     };
   }, [history]);
+
+  const orderedPredictions = useMemo(() => {
+    const predictions = history?.predictions ?? [];
+
+    return [...predictions].sort((left, right) => {
+      const matchDiff =
+        new Date(left.match.utcDate).getTime() - new Date(right.match.utcDate).getTime();
+
+      if (matchDiff !== 0) {
+        return matchDiff;
+      }
+
+      return (
+        new Date(left.submittedAt).getTime() - new Date(right.submittedAt).getTime()
+      );
+    });
+  }, [history]);
+
+  const filteredPredictions = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const predictions = orderedPredictions;
+
+    if (!normalizedSearch) {
+      return predictions;
+    }
+
+    return predictions.filter((prediction) =>
+      [
+        prediction.match.homeTeam.name,
+        prediction.match.homeTeam.shortName ?? '',
+        prediction.match.awayTeam.name,
+        prediction.match.awayTeam.shortName ?? '',
+        prediction.room?.name ?? '',
+        getPredictionTypeLabel(prediction),
+        getStatusLabel(prediction.match.status),
+      ].some((value) => value.toLowerCase().includes(normalizedSearch)),
+    );
+  }, [orderedPredictions, searchTerm]);
 
   return (
     <PrivateRoute>
@@ -100,14 +139,46 @@ export default function UserPredictionsPage() {
               </div>
             </section>
 
-            {!isLoading && history.predictions.length === 0 ? (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <label className="block w-full max-w-xl">
+                  <span className="text-sm font-black text-ink">Buscar prediccion</span>
+                  <div className="relative mt-2">
+                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
+                      <SearchIcon />
+                    </span>
+                    <input
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-ink shadow-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
+                      placeholder="Filtra por partido, sala o estado"
+                      type="search"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                    />
+                  </div>
+                </label>
+                <div className="rounded-xl bg-slate-50 px-4 py-2">
+                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
+                    Resultados
+                  </p>
+                  <p className="text-sm font-black text-ink">{filteredPredictions.length}</p>
+                </div>
+              </div>
+            </section>
+
+            {!isLoading && orderedPredictions.length === 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-                Este participante aún no tiene predicciones registradas.
+                Este participante aun no tiene predicciones registradas.
+              </div>
+            ) : null}
+
+            {!isLoading && orderedPredictions.length > 0 && filteredPredictions.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+                No se encontraron predicciones que coincidan con el filtro.
               </div>
             ) : null}
 
             <section className="grid gap-4">
-              {history.predictions.map((prediction) => (
+              {filteredPredictions.map((prediction) => (
                 <PredictionAuditCard
                   prediction={prediction}
                   key={prediction.id}
@@ -142,6 +213,27 @@ function LoadingOverlay({ message }: { message: string }) {
         </p>
       </div>
     </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
+      <path
+        d="M9.167 15.833A6.667 6.667 0 1 0 9.167 2.5a6.667 6.667 0 0 0 0 13.333Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.75"
+      />
+      <path
+        d="m14.167 14.167 3.333 3.333"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.75"
+      />
+    </svg>
   );
 }
 
@@ -210,7 +302,7 @@ function PredictionAuditCard({
 
         <div className={`rounded-xl border p-4 lg:min-w-80 ${statusClasses.summary}`}>
           <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-            Predicción registrada
+            PredicciÃ³n registrada
           </p>
           <p className="mt-2 text-2xl font-black text-ink">
             {formatPredictionValue(prediction)}
@@ -228,11 +320,11 @@ function PredictionAuditCard({
       </div>
 
       <div className={`mt-4 rounded-xl px-4 py-3 text-sm leading-6 text-slate-700 ${statusClasses.detail}`}>
-        <p className="font-black text-ink">Detalle del cálculo</p>
+        <p className="font-black text-ink">Detalle del cÃ¡lculo</p>
         <p className="mt-1">
           {prediction.score?.reason
             ? normalizeReason(prediction.score.reason)
-            : 'Pendiente de cálculo. El puntaje se calculará cuando el partido finalice y tenga resultado oficial.'}
+            : 'Pendiente de cÃ¡lculo. El puntaje se calcularÃ¡ cuando el partido finalice y tenga resultado oficial.'}
         </p>
       </div>
 
@@ -285,18 +377,18 @@ function getBonusDetail(prediction: Prediction) {
   const bonusPoints = prediction.score.bonusPoints ?? 0;
 
   if (bonusPoints <= 0) {
-    return 'Esta predicción no obtuvo bonus. Puede ganar bonus por registrarse con mas de 24 horas de anticipacion o por racha de aciertos.';
+    return 'Esta prediccion no obtuvo bonus. El bonus de 24 horas solo aplica si la prediccion acierta, y el bonus por racha aplica al cuarto acierto consecutivo.';
   }
 
   const reason = (prediction.score.reason ?? '').toLowerCase();
   const details: string[] = [];
 
   if (reason.includes('anticipada')) {
-    details.push('Predicción anticipada: +1 punto por registrarla con mas de 24 horas de anticipacion.');
+    details.push('Prediccion anticipada correcta: +1 punto por registrarla con mas de 24 horas de anticipacion y acertar.');
   }
 
   if (reason.includes('racha')) {
-    details.push('Bonus por racha: +2 puntos por cada 3 aciertos consecutivos.');
+    details.push('Bonus por racha: +2 puntos por cada 4 aciertos consecutivos.');
   }
 
   if (details.length === 0) {
@@ -374,14 +466,17 @@ function getPredictionAuditLabel(prediction: Prediction) {
     return 'En progreso';
   }
 
-  return (prediction.score.basePoints ?? 0) > 0 ? 'Acertó' : 'No acertó';
+  return (prediction.score.basePoints ?? 0) > 0 ? 'AcertÃ³' : 'No acertÃ³';
 }
 
 function normalizeReason(reason: string) {
   return reason
-    .replace('predicción anticipada', 'predicción anticipada')
+    .replace('prediccion anticipada', 'prediccion anticipada')
     .replace('bonus por racha', 'bonus por racha')
     .replace('resultado exacto', 'resultado exacto')
     .replace('ganador correcto', 'ganador correcto')
     .replace('diferencia de goles correcta', 'diferencia de goles correcta');
 }
+
+
+

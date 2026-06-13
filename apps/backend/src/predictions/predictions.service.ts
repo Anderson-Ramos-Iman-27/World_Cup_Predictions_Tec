@@ -129,7 +129,16 @@ export class PredictionsService {
         roomId: null,
       },
       include: this.predictionInclude(),
-      orderBy: { submittedAt: 'desc' },
+      orderBy: [
+        {
+          match: {
+            utcDate: 'asc',
+          },
+        },
+        {
+          submittedAt: 'asc',
+        },
+      ],
     });
   }
 
@@ -141,7 +150,16 @@ export class PredictionsService {
         roomId,
       },
       include: this.predictionInclude(),
-      orderBy: { submittedAt: 'desc' },
+      orderBy: [
+        {
+          match: {
+            utcDate: 'asc',
+          },
+        },
+        {
+          submittedAt: 'asc',
+        },
+      ],
     });
   }
 
@@ -186,7 +204,16 @@ export class PredictionsService {
         userId,
       },
       include: this.predictionInclude(),
-      orderBy: { submittedAt: 'desc' },
+      orderBy: [
+        {
+          match: {
+            utcDate: 'asc',
+          },
+        },
+        {
+          submittedAt: 'asc',
+        },
+      ],
     });
 
     return {

@@ -348,7 +348,16 @@ export default function RoomDetailPage() {
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
-              <h2 className="text-lg font-black text-ink">Podio de la sala</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-black text-ink">Podio de la sala</h2>
+                <Link
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-ink transition hover:border-action hover:text-action"
+                  href={`/rooms/${room.id}/ranking`}
+                  onClick={() => setOverlayMessage('Abriendo podio completo de la sala...')}
+                >
+                  Ver podio completo
+                </Link>
+              </div>
               <div className="mt-5 space-y-3">
                 {podium.length === 0 ? (
                   <p className="text-sm text-slate-500">Aun no hay puntajes en esta sala.</p>

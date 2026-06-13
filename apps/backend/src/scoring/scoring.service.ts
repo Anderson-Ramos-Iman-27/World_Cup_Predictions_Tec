@@ -84,10 +84,10 @@ export class ScoringService {
       differenceCorrect,
     );
     const streakBonus =
-      winnerCorrect && consecutiveWinnerHits > 0 && consecutiveWinnerHits % 3 === 0
+      winnerCorrect && consecutiveWinnerHits > 0 && consecutiveWinnerHits % 4 === 0
         ? 2
         : 0;
-    const anticipationBonus = earlyPrediction ? 1 : 0;
+    const anticipationBonus = earlyPrediction && basePoints > 0 ? 1 : 0;
     const bonusPoints = streakBonus + anticipationBonus;
     const reasons = [];
 

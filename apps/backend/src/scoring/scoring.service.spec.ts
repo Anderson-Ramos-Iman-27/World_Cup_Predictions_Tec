@@ -119,7 +119,22 @@ describe('ScoringService', () => {
     expect(calculation.reason).toContain('prediccion anticipada');
   });
 
-  it('adds 2 streak bonus points on each third consecutive winner hit', () => {
+  it('does not grant anticipation bonus when the prediction is wrong', () => {
+    const calculation = service.calculatePredictionScore(
+      prediction({
+        homeScore: 0,
+        awayScore: 1,
+        submittedAt: new Date('2026-06-09T19:59:59.000Z'),
+      }),
+      1,
+    );
+
+    expect(calculation.basePoints).toBe(0);
+    expect(calculation.bonusPoints).toBe(0);
+    expect(calculation.totalPoints).toBe(0);
+  });
+
+  it('adds 2 streak bonus points on each fourth consecutive winner hit', () => {
     const calculation = service.calculatePredictionScore(
       prediction({
         predictionType: PredictionType.WINNER,
@@ -128,7 +143,7 @@ describe('ScoringService', () => {
         awayScore: null,
         goalDifference: null,
       }),
-      3,
+      4,
     );
 
     expect(calculation.basePoints).toBe(3);
@@ -151,17 +166,21 @@ describe('ScoringService', () => {
         id: 'prediction-3',
         match: { ...finishedMatch, id: 'match-3', utcDate: new Date('2026-06-12T20:00:00.000Z') },
       }),
+      prediction({
+        id: 'prediction-4',
+        match: { ...finishedMatch, id: 'match-4', utcDate: new Date('2026-06-13T20:00:00.000Z') },
+      }),
     ]);
     prisma.score.upsert.mockResolvedValue({});
 
     await expect(
       service.recalculateUserScores('user-1'),
-    ).resolves.toBe(3);
+    ).resolves.toBe(4);
 
-    expect(prisma.score.upsert).toHaveBeenCalledTimes(3);
+    expect(prisma.score.upsert).toHaveBeenCalledTimes(4);
     expect(prisma.score.upsert).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        where: { predictionId: 'prediction-3' },
+        where: { predictionId: 'prediction-4' },
         update: expect.objectContaining({
           basePoints: 5,
           bonusPoints: 3,
