@@ -5,7 +5,7 @@ describe('ScoringService', () => {
   type PredictionFixture = {
     id: string;
     userId: string;
-    roomId: string;
+    roomId: string | null;
     predictionType: PredictionType;
     predictedWinner: PredictionOutcome | null;
     goalDifference: number | null;
@@ -181,6 +181,41 @@ describe('ScoringService', () => {
           basePoints: 5,
           bonusPoints: 3,
           totalPoints: 8,
+        }),
+      }),
+    );
+  });
+
+  it('keeps streak bonuses isolated per scope so room predictions do not inherit global streaks', async () => {
+    prisma.prediction.findMany.mockResolvedValue([
+      prediction({
+        id: 'prediction-global-1',
+        roomId: null,
+        submittedAt: new Date('2026-06-10T18:00:00.000Z'),
+      }),
+      prediction({
+        id: 'prediction-room-1',
+        roomId: 'room-1',
+        submittedAt: new Date('2026-06-10T19:00:00.000Z'),
+      }),
+      prediction({
+        id: 'prediction-room-2',
+        roomId: 'room-1',
+        submittedAt: new Date('2026-06-10T20:00:00.000Z'),
+      }),
+    ]);
+    prisma.score.upsert.mockResolvedValue({});
+
+    await expect(service.recalculateUserScores('user-1')).resolves.toBe(3);
+
+    expect(prisma.score.upsert).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        where: { predictionId: 'prediction-room-2' },
+        update: expect.objectContaining({
+          basePoints: 5,
+          bonusPoints: 0,
+          totalPoints: 5,
         }),
       }),
     );

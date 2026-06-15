@@ -260,10 +260,13 @@ export class ScoringService {
       ],
     });
 
-    let consecutiveCorrectHits = 0;
+    const consecutiveCorrectHitsByScope = new Map<string, number>();
     const roomIds = new Set<string>();
     let invalidateGlobal = false;
     for (const prediction of predictions) {
+      const scopeKey = prediction.roomId ?? 'global';
+      const consecutiveCorrectHits =
+        consecutiveCorrectHitsByScope.get(scopeKey) ?? 0;
       const calculation = this.calculatePredictionScore(
         prediction,
         consecutiveCorrectHits,
@@ -287,7 +290,10 @@ export class ScoringService {
         },
       });
 
-      consecutiveCorrectHits = calculation.basePoints > 0 ? consecutiveCorrectHits + 1 : 0;
+      consecutiveCorrectHitsByScope.set(
+        scopeKey,
+        calculation.basePoints > 0 ? consecutiveCorrectHits + 1 : 0,
+      );
 
       if (prediction.roomId) {
         roomIds.add(prediction.roomId);
