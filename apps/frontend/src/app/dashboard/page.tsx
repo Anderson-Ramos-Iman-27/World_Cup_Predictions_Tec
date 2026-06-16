@@ -71,6 +71,15 @@ export default function DashboardPage() {
     () => ranking.find((entry) => entry.userId === user?.id),
     [ranking, user?.id],
   );
+  const predictionProgressByMatch = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    predictions.forEach((prediction) => {
+      counts.set(prediction.match.id, (counts.get(prediction.match.id) ?? 0) + 1);
+    });
+
+    return counts;
+  }, [predictions]);
   const currentStreak = useMemo(
     () => calculateCurrentStreak(predictions),
     [predictions],
@@ -177,6 +186,10 @@ export default function DashboardPage() {
                   href={`/matches/${match.id}`}
                   key={match.id}
                   match={match}
+                  predictionProgress={{
+                    current: predictionProgressByMatch.get(match.id) ?? 0,
+                    total: 3,
+                  }}
                   onNavigate={() => setNavigationMessage('Abriendo detalle del partido...')}
                 />
               ))}

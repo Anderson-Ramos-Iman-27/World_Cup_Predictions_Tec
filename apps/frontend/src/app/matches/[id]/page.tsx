@@ -25,6 +25,8 @@ export default function MatchDetailPage() {
   const searchParams = useSearchParams();
   const { user, isLoading: isAuthLoading } = useAuth();
   const roomId = searchParams.get('roomId');
+  const returnTo = searchParams.get('returnTo');
+  const backHref = returnTo ?? (roomId ? `/rooms/${roomId}/predictions` : '/matches');
   const [match, setMatch] = useState<Match | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [predictionMode, setPredictionMode] = useState<PredictionMode>('EXACT_SCORE');
@@ -189,8 +191,14 @@ export default function MatchDetailPage() {
               </div>
               <Link
                 className="self-start text-sm font-bold text-action sm:self-auto"
-                href="/matches"
-                onClick={() => setNavigationMessage('Volviendo a partidos...')}
+                href={backHref}
+                onClick={() =>
+                  setNavigationMessage(
+                    roomId || returnTo
+                      ? 'Volviendo a predicciones de la sala...'
+                      : 'Volviendo a partidos...',
+                  )
+                }
               >
                 Volver
               </Link>

@@ -6,14 +6,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { MatchCard } from '@/components/match-card';
 import { PrivateRoute } from '@/components/layout/private-route';
+import { useAuth } from '@/features/auth/auth-context';
 import { getStatusLabel } from '@/features/user-panel/formatters';
-import type { Match, Room } from '@/features/user-panel/types';
+import type { Match, Prediction, Room } from '@/features/user-panel/types';
 import { apiRequest } from '@/lib/http-client';
 
 export default function RoomPredictionsPage() {
   const params = useParams<{ id: string }>();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [room, setRoom] = useState<Room | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [navigationMessage, setNavigationMessage] = useState('');
@@ -36,6 +39,25 @@ export default function RoomPredictionsPage() {
       )
       .finally(() => setIsLoading(false));
   }, [params.id]);
+
+  useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!user) {
+      setPredictions([]);
+      return;
+    }
+
+    apiRequest<Prediction[]>(`/predictions/room/${params.id}`)
+      .then((nextPredictions) =>
+        setPredictions(
+          nextPredictions.filter((prediction) => prediction.user?.id === user.id),
+        ),
+      )
+      .catch(() => setPredictions([]));
+  }, [isAuthLoading, params.id, user]);
 
   const upcomingMatches = useMemo(
     () => matches.filter((match) => match.status === 'SCHEDULED'),
@@ -62,6 +84,16 @@ export default function RoomPredictionsPage() {
       ].some((value) => value.toLowerCase().includes(normalizedSearch)),
     );
   }, [searchTerm, upcomingMatches]);
+
+  const predictionProgressByMatch = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    predictions.forEach((prediction) => {
+      counts.set(prediction.match.id, (counts.get(prediction.match.id) ?? 0) + 1);
+    });
+
+    return counts;
+  }, [predictions]);
 
   return (
     <PrivateRoute>
@@ -145,9 +177,15 @@ export default function RoomPredictionsPage() {
         <div className="grid gap-5 lg:grid-cols-2">
           {filteredMatches.map((match) => (
             <MatchCard
-              href={`/matches/${match.id}?roomId=${params.id}`}
+              href={`/matches/${match.id}?roomId=${params.id}&returnTo=${encodeURIComponent(
+                `/rooms/${params.id}/predictions`,
+              )}`}
               key={match.id}
               match={match}
+              predictionProgress={{
+                current: predictionProgressByMatch.get(match.id) ?? 0,
+                total: 3,
+              }}
               onNavigate={() => setNavigationMessage('Abriendo partido para predecir en esta sala...')}
             />
           ))}

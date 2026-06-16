@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { MatchCard } from '@/components/match-card';
+import { useAuth } from '@/features/auth/auth-context';
 import type { Match, MatchStatus } from '@/features/user-panel/types';
+import type { Prediction } from '@/features/user-panel/types';
 import { apiRequest } from '@/lib/http-client';
 
 const statuses: Array<{ label: string; value: MatchStatus | 'ALL' }> = [
@@ -14,7 +16,9 @@ const statuses: Array<{ label: string; value: MatchStatus | 'ALL' }> = [
 ];
 
 export default function MatchesPage() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [status, setStatus] = useState<MatchStatus | 'ALL'>('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
   const [search, setSearch] = useState('');
@@ -34,6 +38,21 @@ export default function MatchesPage() {
       )
       .finally(() => setIsLoading(false));
   }, [status]);
+
+  useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!user) {
+      setPredictions([]);
+      return;
+    }
+
+    apiRequest<Prediction[]>('/predictions/my')
+      .then(setPredictions)
+      .catch(() => setPredictions([]));
+  }, [isAuthLoading, user]);
 
   const dateOptions = useMemo(() => {
     const uniqueDates = [...new Set(matches.map((match) => getDateKey(match.utcDate)))];
@@ -73,6 +92,16 @@ export default function MatchesPage() {
       return haystack.includes(normalizedSearch);
     });
   }, [dateFilter, matches, search]);
+
+  const predictionProgressByMatch = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    predictions.forEach((prediction) => {
+      counts.set(prediction.match.id, (counts.get(prediction.match.id) ?? 0) + 1);
+    });
+
+    return counts;
+  }, [predictions]);
 
   return (
     <AppShell
@@ -154,6 +183,14 @@ export default function MatchesPage() {
             href={`/matches/${match.id}`}
             key={match.id}
             match={match}
+            predictionProgress={
+              user
+                ? {
+                    current: predictionProgressByMatch.get(match.id) ?? 0,
+                    total: 3,
+                  }
+                : undefined
+            }
             onNavigate={() => setNavigationMessage('Abriendo detalle del partido...')}
           />
         ))}

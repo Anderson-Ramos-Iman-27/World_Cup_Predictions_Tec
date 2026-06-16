@@ -10,15 +10,24 @@ import type { Match } from '@/features/user-panel/types';
 type MatchCardProps = {
   match: Match;
   href?: string;
+  predictionProgress?: {
+    current: number;
+    total: number;
+  };
   onNavigate?: () => void;
 };
 
-export function MatchCard({ match, href, onNavigate }: MatchCardProps) {
+export function MatchCard({ match, href, onNavigate, predictionProgress }: MatchCardProps) {
   const isLive = match.status === 'LIVE';
   const isFinished = match.status === 'FINISHED';
   const open = canPredict(match.status, match.utcDate);
   const card = (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,35,66,0.16)]">
+    <article className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,35,66,0.16)]">
+      {predictionProgress ? (
+        <div className="absolute right-3 top-3 z-10 rounded-full border border-blue-100 bg-white/95 px-2.5 py-1 text-[11px] font-black tracking-[0.12em] text-action shadow-sm">
+          {predictionProgress.current}/{predictionProgress.total}
+        </div>
+      ) : null}
       <div
         className={`flex items-center justify-between px-4 py-3 text-xs font-black uppercase tracking-wide text-white ${
           isLive ? 'bg-rose-500' : isFinished ? 'bg-[#082442]' : 'bg-action'
