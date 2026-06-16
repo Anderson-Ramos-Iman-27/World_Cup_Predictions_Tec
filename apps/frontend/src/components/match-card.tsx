@@ -24,7 +24,7 @@ export function MatchCard({ match, href, onNavigate, predictionProgress }: Match
   const card = (
     <article className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,35,66,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,35,66,0.16)]">
       {predictionProgress ? (
-        <div className="absolute right-3 top-3 z-10 rounded-full border border-blue-100 bg-white/95 px-2.5 py-1 text-[11px] font-black tracking-[0.12em] text-action shadow-sm">
+        <div className="absolute right-4 top-[3.75rem] z-10 rounded-full border border-blue-100 bg-white/95 px-2.5 py-1 text-[11px] font-black tracking-[0.12em] text-action shadow-sm">
           {predictionProgress.current}/{predictionProgress.total}
         </div>
       ) : null}
