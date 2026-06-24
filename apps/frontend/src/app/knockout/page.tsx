@@ -1,9 +1,10 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import type { ExternalTeam, KnockoutMatch } from '@/features/user-panel/types';
+import type { ExternalTeam, KnockoutMatch, Match } from '@/features/user-panel/types';
 import { apiRequest } from '@/lib/http-client';
 
 const stages = [
@@ -21,6 +22,7 @@ type ConnectorLine = {
 
 export default function KnockoutPage() {
   const [matches, setMatches] = useState<KnockoutMatch[]>([]);
+  const [matchCatalog, setMatchCatalog] = useState<Match[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
@@ -28,13 +30,31 @@ export default function KnockoutPage() {
   const cardRefs = useRef<Record<string, Array<HTMLDivElement | null>>>({});
 
   useEffect(() => {
-    apiRequest<KnockoutMatch[]>('/football-data/knockout')
-      .then(setMatches)
+    Promise.all([
+      apiRequest<KnockoutMatch[]>('/football-data/knockout'),
+      apiRequest<Match[]>('/matches'),
+    ])
+      .then(([nextMatches, nextCatalog]) => {
+        setMatches(nextMatches);
+        setMatchCatalog(nextCatalog);
+      })
       .catch((error) =>
         setError(error instanceof Error ? error.message : 'No se pudo cargar la fase eliminatoria'),
       )
       .finally(() => setIsLoading(false));
   }, []);
+
+  const matchIdByExternalId = useMemo(() => {
+    const map = new Map<number, string>();
+
+    matchCatalog.forEach((match) => {
+      if (typeof match.externalId === 'number') {
+        map.set(match.externalId, match.id);
+      }
+    });
+
+    return map;
+  }, [matchCatalog]);
 
   const matchesByStage = useMemo(() => {
     const grouped = new Map<string, KnockoutMatch[]>();
@@ -127,7 +147,7 @@ export default function KnockoutPage() {
 
       {!isLoading && matches.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
-          La API aún no publica partidos de eliminatorias para esta competencia.
+          La API aun no publica partidos de eliminatorias para esta competencia.
         </div>
       ) : null}
 
@@ -178,7 +198,15 @@ export default function KnockoutPage() {
                               />
                             </div>
                           ) : null}
-                          <KnockoutCard match={match} compact={stage.key === 'FINAL'} />
+                          <KnockoutCard
+                            compact={stage.key === 'FINAL'}
+                            href={
+                              matchIdByExternalId.get(match.id)
+                                ? `/matches/${matchIdByExternalId.get(match.id)}`
+                                : undefined
+                            }
+                            match={match}
+                          />
                         </div>
                       ))}
                     </div>
@@ -193,7 +221,15 @@ export default function KnockoutPage() {
   );
 }
 
-function KnockoutCard({ match, compact }: { match: KnockoutMatch; compact?: boolean }) {
+function KnockoutCard({
+  compact,
+  href,
+  match,
+}: {
+  compact?: boolean;
+  href?: string;
+  match: KnockoutMatch;
+}) {
   const homeScore = match.score?.fullTime?.home;
   const awayScore = match.score?.fullTime?.away;
   const hasScore =
@@ -201,11 +237,11 @@ function KnockoutCard({ match, compact }: { match: KnockoutMatch; compact?: bool
   const homeTeam = getTeamDisplay(match.homeTeam);
   const awayTeam = getTeamDisplay(match.awayTeam);
 
-  return (
+  const card = (
     <article
       className={`relative rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_24px_rgba(15,35,66,0.10)] ${
         compact ? 'max-w-[240px]' : ''
-      }`}
+      } ${href ? 'transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,35,66,0.16)]' : ''}`}
     >
       <p className="mb-3 text-xs font-bold text-slate-500">
         {formatMatchDate(match.utcDate)} · {getExternalStatusLabel(match.status)}
@@ -214,6 +250,20 @@ function KnockoutCard({ match, compact }: { match: KnockoutMatch; compact?: bool
       <div className="my-2 border-t border-slate-100" />
       <TeamLine crest={awayTeam.crest} name={awayTeam.name} score={hasScore ? awayScore : null} />
     </article>
+  );
+
+  if (!href) {
+    return card;
+  }
+
+  return (
+    <Link
+      aria-label={`Abrir detalle para predecir ${homeTeam.name} vs ${awayTeam.name}`}
+      className="block"
+      href={href}
+    >
+      {card}
+    </Link>
   );
 }
 

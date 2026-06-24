@@ -2,14 +2,11 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { PrivateRoute } from '@/components/layout/private-route';
 import { TeamBadge } from '@/components/team-badge';
-import {
-  formatDateTime,
-  getStatusLabel,
-} from '@/features/user-panel/formatters';
+import { formatDateTime, getStatusLabel } from '@/features/user-panel/formatters';
 import type { Prediction } from '@/features/user-panel/types';
 import { apiRequest } from '@/lib/http-client';
 
@@ -35,7 +32,8 @@ export default function RoomUserPredictionsPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [navigationMessage, setNavigationMessage] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     apiRequest<RoomPredictionHistory>(`/rankings/rooms/${params.id}/users/${params.userId}/history`)
@@ -52,14 +50,8 @@ export default function RoomUserPredictionsPage() {
     return {
       count: predictions.length,
       scored: predictions.filter((prediction) => prediction.score).length,
-      points: predictions.reduce(
-        (total, prediction) => total + (prediction.score?.totalPoints ?? 0),
-        0,
-      ),
-      bonus: predictions.reduce(
-        (total, prediction) => total + (prediction.score?.bonusPoints ?? 0),
-        0,
-      ),
+      points: predictions.reduce((total, prediction) => total + (prediction.score?.totalPoints ?? 0), 0),
+      bonus: predictions.reduce((total, prediction) => total + (prediction.score?.bonusPoints ?? 0), 0),
     };
   }, [history]);
 
@@ -74,31 +66,46 @@ export default function RoomUserPredictionsPage() {
         return matchDiff;
       }
 
-      return (
-        new Date(left.submittedAt).getTime() - new Date(right.submittedAt).getTime()
-      );
+      return new Date(left.submittedAt).getTime() - new Date(right.submittedAt).getTime();
     });
   }, [history]);
 
-  const filteredPredictions = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const predictions = orderedPredictions;
+  const dateOptions = useMemo(() => {
+    const uniqueDates = [...new Set(orderedPredictions.map((prediction) => getDateKey(prediction.match.utcDate)))];
 
-    if (!normalizedSearch) {
-      return predictions;
+    return uniqueDates
+      .sort()
+      .map((value) => ({
+        value,
+        label: formatDateOption(value),
+      }));
+  }, [orderedPredictions]);
+
+  const filteredPredictions = useMemo(() => {
+    if (dateFilter === 'ALL') {
+      return orderedPredictions;
     }
 
-    return predictions.filter((prediction) =>
-      [
-        prediction.match.homeTeam.name,
-        prediction.match.homeTeam.shortName ?? '',
-        prediction.match.awayTeam.name,
-        prediction.match.awayTeam.shortName ?? '',
-        getPredictionTypeLabel(prediction),
-        getStatusLabel(prediction.match.status),
-      ].some((value) => value.toLowerCase().includes(normalizedSearch)),
-    );
-  }, [orderedPredictions, searchTerm]);
+    return orderedPredictions.filter((prediction) => getDateKey(prediction.match.utcDate) === dateFilter);
+  }, [dateFilter, orderedPredictions]);
+
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredPredictions.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedPredictions = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredPredictions.slice(start, start + pageSize);
+  }, [filteredPredictions, safeCurrentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <PrivateRoute>
@@ -156,19 +163,19 @@ export default function RoomUserPredictionsPage() {
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <label className="block w-full max-w-xl">
-                  <span className="text-sm font-black text-ink">Buscar prediccion</span>
-                  <div className="relative mt-2">
-                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
-                      <SearchIcon />
-                    </span>
-                    <input
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-ink shadow-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
-                      placeholder="Filtra por partido o estado"
-                      type="search"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                    />
-                  </div>
+                  <span className="text-sm font-black text-ink">Buscar por fecha</span>
+                  <select
+                    className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-ink shadow-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
+                    value={dateFilter}
+                    onChange={(event) => setDateFilter(event.target.value)}
+                  >
+                    <option value="ALL">Todas las fechas</option>
+                    {dateOptions.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <div className="rounded-xl bg-slate-50 px-4 py-2">
                   <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
@@ -192,14 +199,24 @@ export default function RoomUserPredictionsPage() {
             ) : null}
 
             <section className="grid gap-4">
-              {filteredPredictions.map((prediction) => (
+              {paginatedPredictions.map((prediction) => (
                 <PredictionAuditCard
                   prediction={prediction}
                   key={prediction.id}
                   onNavigate={() => setNavigationMessage('Abriendo detalle del partido...')}
+                  roomId={history.room.id}
+                  userId={params.userId}
                 />
               ))}
             </section>
+
+            {!isLoading && filteredPredictions.length > 0 ? (
+              <Pagination
+                currentPage={safeCurrentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            ) : null}
           </div>
         ) : null}
       </AppShell>
@@ -222,41 +239,22 @@ function LoadingOverlay({ message }: { message: string }) {
       <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
         <p className="mt-4 text-base font-black text-ink">{message}</p>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Preparando la informacion.
-        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">Preparando la informacion.</p>
       </div>
     </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
-      <path
-        d="M9.167 15.833A6.667 6.667 0 1 0 9.167 2.5a6.667 6.667 0 0 0 0 13.333Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.75"
-      />
-      <path
-        d="m14.167 14.167 3.333 3.333"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.75"
-      />
-    </svg>
   );
 }
 
 function PredictionAuditCard({
   onNavigate,
   prediction,
+  roomId,
+  userId,
 }: {
   onNavigate: () => void;
   prediction: Prediction;
+  roomId: string;
+  userId: string;
 }) {
   const statusClasses = getPredictionAuditClasses(prediction);
 
@@ -318,9 +316,7 @@ function PredictionAuditCard({
           <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
             Prediccion registrada
           </p>
-          <p className="mt-2 text-2xl font-black text-ink">
-            {formatPredictionValue(prediction)}
-          </p>
+          <p className="mt-2 text-2xl font-black text-ink">{formatPredictionValue(prediction)}</p>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <PointBox label="Puntos Base" value={prediction.score?.basePoints ?? 0} />
             <PointBox
@@ -345,7 +341,7 @@ function PredictionAuditCard({
       <div className="mt-4 flex justify-end">
         <Link
           className="text-sm font-bold text-action hover:text-[#0b4cc4]"
-          href={`/matches/${prediction.match.id}`}
+          href={`/matches/${prediction.match.id}?roomId=${roomId}&returnTo=${encodeURIComponent(`/rooms/${roomId}/users/${userId}/predictions`)}`}
           onClick={onNavigate}
         >
           Ver partido
@@ -383,33 +379,155 @@ function PointBox({
   );
 }
 
-function getBonusDetail(prediction: Prediction) {
-  if (!prediction.score) {
-    return 'El bonus se calculara cuando el partido finalice y exista resultado oficial.';
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pages = getVisiblePages(currentPage, totalPages);
+
+  return (
+    <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+      <PaginationButton
+        ariaLabel="Pagina anterior"
+        disabled={currentPage === 1}
+        onClick={() => onPageChange(currentPage - 1)}
+      >
+        <ArrowLeftIcon />
+      </PaginationButton>
+
+      {pages.map((page, index) =>
+        page === 'ellipsis' ? (
+          <span
+            className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-slate-900 px-3 text-sm font-black text-white/70"
+            key={`ellipsis-${index}`}
+          >
+            ...
+          </span>
+        ) : (
+          <PaginationButton active={page === currentPage} key={page} onClick={() => onPageChange(page)}>
+            {page}
+          </PaginationButton>
+        ),
+      )}
+
+      <PaginationButton
+        ariaLabel="Pagina siguiente"
+        disabled={currentPage === totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+      >
+        <ArrowRightIcon />
+      </PaginationButton>
+    </div>
+  );
+}
+
+function PaginationButton({
+  active = false,
+  ariaLabel,
+  children,
+  disabled = false,
+  onClick,
+}: {
+  active?: boolean;
+  ariaLabel?: string;
+  children: ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={`inline-flex h-11 min-w-11 items-center justify-center rounded-xl px-4 text-sm font-black transition ${
+        active
+          ? 'bg-action text-white shadow-[0_14px_34px_rgba(15,35,66,0.22)]'
+          : 'bg-[#0a1f3a] text-white hover:bg-action'
+      } disabled:cursor-not-allowed disabled:opacity-40`}
+      disabled={disabled}
+      type="button"
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function getVisiblePages(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
   }
 
-  const bonusPoints = prediction.score.bonusPoints ?? 0;
+  const pages: Array<number | 'ellipsis'> = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
 
-  if (bonusPoints <= 0) {
-    return 'Esta prediccion no obtuvo bonus. El bonus de 24 horas solo aplica si la prediccion acierta, y el bonus por racha aplica al tercer acierto consecutivo.';
+  if (start > 2) {
+    pages.push('ellipsis');
   }
 
-  const reason = (prediction.score.reason ?? '').toLowerCase();
-  const details: string[] = [];
-
-  if (reason.includes('anticipada')) {
-    details.push('Prediccion anticipada correcta: +1 punto por registrarla con mas de 24 horas de anticipacion y acertar.');
+  for (let page = start; page <= end; page += 1) {
+    pages.push(page);
   }
 
-  if (reason.includes('racha')) {
-    details.push('Bonus por racha: +2 puntos por cada 3 aciertos consecutivos.');
+  if (end < totalPages - 1) {
+    pages.push('ellipsis');
   }
 
-  if (details.length === 0) {
-    details.push('Bonus aplicado segun las reglas de puntuacion.');
-  }
+  pages.push(totalPages);
 
-  return details.join(' ');
+  return pages;
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
+      <path
+        d="M12.5 15 7.5 10l5-5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
+      <path
+        d="m7.5 5 5 5-5 5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function getDateKey(value: string) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateOption(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+
+  return new Intl.DateTimeFormat('es-PE', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, day));
 }
 
 function getPredictionTypeLabel(prediction: Prediction) {
@@ -481,6 +599,35 @@ function getPredictionAuditLabel(prediction: Prediction) {
   }
 
   return (prediction.score.basePoints ?? 0) > 0 ? 'Acierto' : 'No acierto';
+}
+
+function getBonusDetail(prediction: Prediction) {
+  if (!prediction.score) {
+    return 'El bonus se calculara cuando el partido finalice y exista resultado oficial.';
+  }
+
+  const bonusPoints = prediction.score.bonusPoints ?? 0;
+
+  if (bonusPoints <= 0) {
+    return 'Esta prediccion no obtuvo bonus. El bonus de 24 horas solo aplica si la prediccion acierta, y el bonus por racha aplica al tercer acierto consecutivo.';
+  }
+
+  const reason = (prediction.score.reason ?? '').toLowerCase();
+  const details: string[] = [];
+
+  if (reason.includes('anticipada')) {
+    details.push('Prediccion anticipada correcta: +1 punto por registrarla con mas de 24 horas de anticipacion y acertar.');
+  }
+
+  if (reason.includes('racha')) {
+    details.push('Bonus por racha: +2 puntos por cada 3 aciertos consecutivos.');
+  }
+
+  if (details.length === 0) {
+    details.push('Bonus aplicado segun las reglas de puntuacion.');
+  }
+
+  return details.join(' ');
 }
 
 function normalizeReason(reason: string) {

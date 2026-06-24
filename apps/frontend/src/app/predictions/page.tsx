@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { PrivateRoute } from '@/components/layout/private-route';
 import { TeamBadge } from '@/components/team-badge';
@@ -18,7 +18,9 @@ export default function PredictionsPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [navigationMessage, setNavigationMessage] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+
   const orderedPredictions = useMemo(() => {
     return [...predictions].sort((left, right) => {
       const matchDiff =
@@ -28,31 +30,37 @@ export default function PredictionsPage() {
         return matchDiff;
       }
 
-      return (
-        new Date(left.submittedAt).getTime() - new Date(right.submittedAt).getTime()
-      );
+      return new Date(left.submittedAt).getTime() - new Date(right.submittedAt).getTime();
     });
   }, [predictions]);
-  const currentStreak = calculateCurrentStreak(orderedPredictions);
-  const filteredPredictions = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    if (!normalizedSearch) {
+  const dateOptions = useMemo(() => {
+    const uniqueDates = [...new Set(orderedPredictions.map((prediction) => getDateKey(prediction.match.utcDate)))];
+
+    return uniqueDates
+      .sort()
+      .map((value) => ({
+        value,
+        label: formatDateOption(value),
+      }));
+  }, [orderedPredictions]);
+
+  const filteredPredictions = useMemo(() => {
+    if (dateFilter === 'ALL') {
       return orderedPredictions;
     }
 
-    return orderedPredictions.filter((prediction) =>
-      [
-        prediction.match.homeTeam.name,
-        prediction.match.homeTeam.shortName ?? '',
-        prediction.match.awayTeam.name,
-        prediction.match.awayTeam.shortName ?? '',
-        prediction.room?.name ?? '',
-        getPredictionTypeLabel(prediction),
-        getStatusLabel(prediction.match.status),
-      ].some((value) => value.toLowerCase().includes(normalizedSearch)),
-    );
-  }, [orderedPredictions, searchTerm]);
+    return orderedPredictions.filter((prediction) => getDateKey(prediction.match.utcDate) === dateFilter);
+  }, [dateFilter, orderedPredictions]);
+
+  const currentStreak = calculateCurrentStreak(orderedPredictions);
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredPredictions.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedPredictions = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredPredictions.slice(start, start + pageSize);
+  }, [filteredPredictions, safeCurrentPage]);
 
   useEffect(() => {
     apiRequest<Prediction[]>('/predictions/my')
@@ -62,6 +70,16 @@ export default function PredictionsPage() {
       )
       .finally(() => setIsLoading(false));
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <PrivateRoute>
@@ -92,19 +110,19 @@ export default function PredictionsPage() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <label className="block w-full max-w-xl">
-                <span className="text-sm font-black text-ink">Buscar prediccion</span>
-                <div className="relative mt-2">
-                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
-                    <SearchIcon />
-                  </span>
-                  <input
-                    className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-ink shadow-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
-                    placeholder="Filtra por partido, sala o estado"
-                    type="search"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                  />
-                </div>
+                <span className="text-sm font-black text-ink">Buscar por fecha</span>
+                <select
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-ink shadow-sm outline-none transition focus:border-action focus:ring-4 focus:ring-blue-100"
+                  value={dateFilter}
+                  onChange={(event) => setDateFilter(event.target.value)}
+                >
+                  <option value="ALL">Todas las fechas</option>
+                  {dateOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <div className="rounded-xl bg-slate-50 px-4 py-2">
                 <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
@@ -128,13 +146,21 @@ export default function PredictionsPage() {
             </div>
           ) : null}
 
-          {filteredPredictions.map((prediction) => (
+          {paginatedPredictions.map((prediction) => (
             <PredictionCard
               prediction={prediction}
               key={prediction.id}
               onNavigate={() => setNavigationMessage('Abriendo detalle del partido...')}
             />
           ))}
+
+          {!isLoading && filteredPredictions.length > 0 ? (
+            <Pagination
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null}
         </div>
       </AppShell>
     </PrivateRoute>
@@ -198,11 +224,9 @@ function PredictionCard({
 
         <div className={`rounded-xl border p-4 lg:min-w-80 ${statusClasses.summary}`}>
           <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-            PredicciÃ³n registrada
+            Prediccion registrada
           </p>
-          <p className="mt-2 text-2xl font-black text-ink">
-            {formatPredictionValue(prediction)}
-          </p>
+          <p className="mt-2 text-2xl font-black text-ink">{formatPredictionValue(prediction)}</p>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <PointBox label="Puntos Base" value={prediction.score?.basePoints ?? 0} />
             <PointBox
@@ -243,32 +267,9 @@ function LoadingOverlay({ message }: { message: string }) {
       <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-white p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-action" />
         <p className="mt-4 text-base font-black text-ink">{message}</p>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Preparando la informacion.
-        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">Preparando la informacion.</p>
       </div>
     </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
-      <path
-        d="M9.167 15.833A6.667 6.667 0 1 0 9.167 2.5a6.667 6.667 0 0 0 0 13.333Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.75"
-      />
-      <path
-        d="m14.167 14.167 3.333 3.333"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.75"
-      />
-    </svg>
   );
 }
 
@@ -298,6 +299,157 @@ function PointBox({
       ) : null}
     </div>
   );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pages = getVisiblePages(currentPage, totalPages);
+
+  return (
+    <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+      <PaginationButton
+        ariaLabel="Pagina anterior"
+        disabled={currentPage === 1}
+        onClick={() => onPageChange(currentPage - 1)}
+      >
+        <ArrowLeftIcon />
+      </PaginationButton>
+
+      {pages.map((page, index) =>
+        page === 'ellipsis' ? (
+          <span
+            className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-slate-900 px-3 text-sm font-black text-white/70"
+            key={`ellipsis-${index}`}
+          >
+            ...
+          </span>
+        ) : (
+          <PaginationButton active={page === currentPage} key={page} onClick={() => onPageChange(page)}>
+            {page}
+          </PaginationButton>
+        ),
+      )}
+
+      <PaginationButton
+        ariaLabel="Pagina siguiente"
+        disabled={currentPage === totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+      >
+        <ArrowRightIcon />
+      </PaginationButton>
+    </div>
+  );
+}
+
+function PaginationButton({
+  active = false,
+  ariaLabel,
+  children,
+  disabled = false,
+  onClick,
+}: {
+  active?: boolean;
+  ariaLabel?: string;
+  children: ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={`inline-flex h-11 min-w-11 items-center justify-center rounded-xl px-4 text-sm font-black transition ${
+        active
+          ? 'bg-action text-white shadow-[0_14px_34px_rgba(15,35,66,0.22)]'
+          : 'bg-[#0a1f3a] text-white hover:bg-action'
+      } disabled:cursor-not-allowed disabled:opacity-40`}
+      disabled={disabled}
+      type="button"
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function getVisiblePages(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages: Array<number | 'ellipsis'> = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) {
+    pages.push('ellipsis');
+  }
+
+  for (let page = start; page <= end; page += 1) {
+    pages.push(page);
+  }
+
+  if (end < totalPages - 1) {
+    pages.push('ellipsis');
+  }
+
+  pages.push(totalPages);
+
+  return pages;
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
+      <path
+        d="M12.5 15 7.5 10l5-5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
+      <path
+        d="m7.5 5 5 5-5 5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function getDateKey(value: string) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateOption(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+
+  return new Intl.DateTimeFormat('es-PE', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, day));
 }
 
 function getPredictionTypeLabel(prediction: Prediction) {
@@ -386,7 +538,7 @@ function getBonusDetail(prediction: Prediction) {
   const details: string[] = [];
 
   if (reason.includes('anticipada')) {
-    details.push('Prediccion anticipada correcta: +1 punto por registrarla con mas de 24 horas de anticipacion.');
+    details.push('Prediccion anticipada correcta: +1 punto por registrarla con mas de 24 horas de anticipacion y acertar.');
   }
 
   if (reason.includes('racha')) {
@@ -402,10 +554,9 @@ function getBonusDetail(prediction: Prediction) {
 
 function normalizeReason(reason: string) {
   return reason
-    .replace('predicciÃ³n anticipada', 'predicciÃ³n anticipada')
+    .replace('prediccion anticipada', 'prediccion anticipada')
     .replace('bonus por racha', 'bonus por racha')
     .replace('resultado exacto', 'resultado exacto')
     .replace('ganador correcto', 'ganador correcto')
     .replace('diferencia de goles correcta', 'diferencia de goles correcta');
 }
-
