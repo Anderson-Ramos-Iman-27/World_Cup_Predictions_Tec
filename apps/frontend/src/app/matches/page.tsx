@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { MatchCard } from '@/components/match-card';
 import { useAuth } from '@/features/auth/auth-context';
@@ -22,6 +23,7 @@ export default function MatchesPage() {
   const [status, setStatus] = useState<MatchStatus | 'ALL'>('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [navigationMessage, setNavigationMessage] = useState('');
@@ -68,7 +70,22 @@ export default function MatchesPage() {
   const filteredMatches = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return matches.filter((match) => {
+    const orderedMatches = [...matches].sort((left, right) => {
+      if (status !== 'ALL') {
+        return new Date(left.utcDate).getTime() - new Date(right.utcDate).getTime();
+      }
+
+      const statusDifference =
+        getStatusSortPriority(left.status) - getStatusSortPriority(right.status);
+
+      if (statusDifference !== 0) {
+        return statusDifference;
+      }
+
+      return new Date(left.utcDate).getTime() - new Date(right.utcDate).getTime();
+    });
+
+    return orderedMatches.filter((match) => {
       if (dateFilter !== 'ALL' && getDateKey(match.utcDate) !== dateFilter) {
         return false;
       }
@@ -91,7 +108,15 @@ export default function MatchesPage() {
 
       return haystack.includes(normalizedSearch);
     });
-  }, [dateFilter, matches, search]);
+  }, [dateFilter, matches, search, status]);
+
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredMatches.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedMatches = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredMatches.slice(start, start + pageSize);
+  }, [filteredMatches, safeCurrentPage]);
 
   const predictionProgressByMatch = useMemo(() => {
     const counts = new Map<string, number>();
@@ -102,6 +127,16 @@ export default function MatchesPage() {
 
     return counts;
   }, [predictions]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFilter, search, status]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <AppShell
@@ -178,7 +213,7 @@ export default function MatchesPage() {
         {!isLoading && filteredMatches.length === 0 ? (
           <p className="text-sm text-slate-500">No hay partidos para este filtro.</p>
         ) : null}
-        {filteredMatches.map((match) => (
+        {paginatedMatches.map((match) => (
           <MatchCard
             href={`/matches/${match.id}`}
             key={match.id}
@@ -195,6 +230,14 @@ export default function MatchesPage() {
           />
         ))}
       </div>
+
+      {!isLoading && filteredMatches.length > 0 ? (
+        <Pagination
+          currentPage={safeCurrentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      ) : null}
     </AppShell>
   );
 }
@@ -231,4 +274,151 @@ function formatDateOption(value: string) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(year, month - 1, day));
+}
+
+function getStatusSortPriority(status: MatchStatus) {
+  const priorities: Record<MatchStatus, number> = {
+    LIVE: 0,
+    SCHEDULED: 1,
+    FINISHED: 2,
+    POSTPONED: 3,
+    CANCELLED: 4,
+  };
+
+  return priorities[status] ?? 99;
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pages = getVisiblePages(currentPage, totalPages);
+
+  return (
+    <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+      <PaginationButton
+        ariaLabel="Página anterior"
+        disabled={currentPage === 1}
+        onClick={() => onPageChange(currentPage - 1)}
+      >
+        <ArrowLeftIcon />
+      </PaginationButton>
+
+      {pages.map((page, index) =>
+        page === 'ellipsis' ? (
+          <span
+            className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-slate-900 px-3 text-sm font-black text-white/70"
+            key={`ellipsis-${index}`}
+          >
+            ...
+          </span>
+        ) : (
+          <PaginationButton
+            active={page === currentPage}
+            key={page}
+            onClick={() => onPageChange(page)}
+          >
+            {page}
+          </PaginationButton>
+        ),
+      )}
+
+      <PaginationButton
+        ariaLabel="Página siguiente"
+        disabled={currentPage === totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+      >
+        <ArrowRightIcon />
+      </PaginationButton>
+    </div>
+  );
+}
+
+function PaginationButton({
+  active = false,
+  ariaLabel,
+  children,
+  disabled = false,
+  onClick,
+}: {
+  active?: boolean;
+  ariaLabel?: string;
+  children: ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={`inline-flex h-11 min-w-11 items-center justify-center rounded-xl px-4 text-sm font-black transition ${
+        active
+          ? 'bg-action text-white shadow-[0_14px_34px_rgba(15,35,66,0.22)]'
+          : 'bg-[#0a1f3a] text-white hover:bg-action'
+      } disabled:cursor-not-allowed disabled:opacity-40`}
+      disabled={disabled}
+      type="button"
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function getVisiblePages(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages: Array<number | 'ellipsis'> = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) {
+    pages.push('ellipsis');
+  }
+
+  for (let page = start; page <= end; page += 1) {
+    pages.push(page);
+  }
+
+  if (end < totalPages - 1) {
+    pages.push('ellipsis');
+  }
+
+  pages.push(totalPages);
+
+  return pages;
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
+      <path
+        d="M12.5 15 7.5 10l5-5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 20 20" width="18">
+      <path
+        d="m7.5 5 5 5-5 5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
 }
