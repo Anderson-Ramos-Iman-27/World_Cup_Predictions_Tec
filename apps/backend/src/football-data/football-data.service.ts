@@ -62,8 +62,14 @@ export class FootballDataService {
 
         if (syncedMatch.status === MatchStatus.FINISHED) {
           finishedMatches += 1;
-          await this.scoringService.recalculateMatchScores(syncedMatch.id);
         }
+      }
+
+      let updatedScores = 0;
+
+      if (finishedMatches > 0) {
+        const recalculation = await this.scoringService.recalculateAllScores();
+        updatedScores = recalculation.updatedScores;
       }
 
       const syncLog = await this.prisma.syncLog.create({
@@ -80,6 +86,7 @@ export class FootballDataService {
             totalMatches: response.matches.length,
             finishedMatches,
             skippedMatches,
+            updatedScores,
           },
         },
       });
@@ -89,6 +96,10 @@ export class FootballDataService {
         totalMatches: response.matches.length,
         finishedMatches,
         skippedMatches,
+        message:
+          finishedMatches > 0
+            ? `Sincronizados ${response.matches.length - skippedMatches} partidos, ${skippedMatches} omitidos por datos incompletos. Puntajes recalculados para ${updatedScores} predicciones.`
+            : syncLog.message ?? undefined,
       };
     } catch (error) {
       const syncLog = await this.prisma.syncLog.create({
