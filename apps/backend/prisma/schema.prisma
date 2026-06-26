@@ -192,6 +192,7 @@ model Match {
   homeTeamId  String
   awayTeamId  String
   utcDate     DateTime
+  stage       String?
   status      MatchStatus @default(SCHEDULED)
   homeScore   Int?
   awayScore   Int?
@@ -204,6 +205,7 @@ model Match {
 
   @@index([status])
   @@index([utcDate])
+  @@index([stage])
 }
 
 model Prediction {

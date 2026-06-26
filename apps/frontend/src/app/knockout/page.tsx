@@ -4,10 +4,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import type { ExternalTeam, KnockoutMatch, Match } from '@/features/user-panel/types';
+import type { Match, Team } from '@/features/user-panel/types';
 import { apiRequest } from '@/lib/http-client';
 
-const stages = [
+const knockoutStages = [
   { key: 'LAST_32', label: 'Dieciseisavos' },
   { key: 'LAST_16', label: 'Octavos' },
   { key: 'QUARTER_FINALS', label: 'Cuartos' },
@@ -16,13 +16,14 @@ const stages = [
   { key: 'FINAL', label: 'Final' },
 ];
 
+const knockoutStageSet = new Set(knockoutStages.map((stage) => stage.key));
+
 type ConnectorLine = {
   d: string;
 };
 
 export default function KnockoutPage() {
-  const [matches, setMatches] = useState<KnockoutMatch[]>([]);
-  const [matchCatalog, setMatchCatalog] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
@@ -30,40 +31,32 @@ export default function KnockoutPage() {
   const cardRefs = useRef<Record<string, Array<HTMLDivElement | null>>>({});
 
   useEffect(() => {
-    Promise.all([
-      apiRequest<KnockoutMatch[]>('/football-data/knockout'),
-      apiRequest<Match[]>('/matches'),
-    ])
-      .then(([nextMatches, nextCatalog]) => {
+    apiRequest<Match[]>('/matches')
+      .then((nextMatches) => {
         setMatches(nextMatches);
-        setMatchCatalog(nextCatalog);
       })
-      .catch((error) =>
-        setError(error instanceof Error ? error.message : 'No se pudo cargar la fase eliminatoria'),
+      .catch((requestError) =>
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo cargar la fase eliminatoria',
+        ),
       )
       .finally(() => setIsLoading(false));
   }, []);
 
-  const matchIdByExternalId = useMemo(() => {
-    const map = new Map<number, string>();
-
-    matchCatalog.forEach((match) => {
-      if (typeof match.externalId === 'number') {
-        map.set(match.externalId, match.id);
-      }
-    });
-
-    return map;
-  }, [matchCatalog]);
-
   const matchesByStage = useMemo(() => {
-    const grouped = new Map<string, KnockoutMatch[]>();
+    const grouped = new Map<string, Match[]>();
 
-    for (const stage of stages) {
+    for (const stage of knockoutStages) {
       grouped.set(stage.key, []);
     }
 
     for (const match of matches) {
+      if (!match.stage || !knockoutStageSet.has(match.stage)) {
+        continue;
+      }
+
       grouped.get(match.stage)?.push(match);
     }
 
@@ -77,8 +70,13 @@ export default function KnockoutPage() {
     return grouped;
   }, [matches]);
 
+  const knockoutMatches = useMemo(
+    () => Array.from(matchesByStage.values()).flat(),
+    [matchesByStage],
+  );
+
   useLayoutEffect(() => {
-    if (!matches.length) {
+    if (!knockoutMatches.length) {
       setConnectorLines([]);
       return;
     }
@@ -92,9 +90,9 @@ export default function KnockoutPage() {
       const containerRect = container.getBoundingClientRect();
       const paths: ConnectorLine[] = [];
 
-      for (let stageIndex = 0; stageIndex < stages.length - 1; stageIndex += 1) {
-        const currentStage = stages[stageIndex];
-        const nextStage = stages[stageIndex + 1];
+      for (let stageIndex = 0; stageIndex < knockoutStages.length - 1; stageIndex += 1) {
+        const currentStage = knockoutStages[stageIndex];
+        const nextStage = knockoutStages[stageIndex + 1];
         const currentCards = cardRefs.current[currentStage.key] ?? [];
         const nextCards = cardRefs.current[nextStage.key] ?? [];
 
@@ -130,7 +128,7 @@ export default function KnockoutPage() {
       window.cancelAnimationFrame(raf);
       window.removeEventListener('resize', computeLines);
     };
-  }, [matches]);
+  }, [knockoutMatches]);
 
   return (
     <AppShell
@@ -145,13 +143,13 @@ export default function KnockoutPage() {
 
       {isLoading ? <p className="text-sm text-slate-500">Cargando eliminatorias...</p> : null}
 
-      {!isLoading && matches.length === 0 ? (
+      {!isLoading && knockoutMatches.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
-          La API aun no publica partidos de eliminatorias para esta competencia.
+          La sincronización aun no ha publicado partidos de eliminatorias para esta competencia.
         </div>
       ) : null}
 
-      {matches.length > 0 ? (
+      {knockoutMatches.length > 0 ? (
         <section className="relative left-1/2 box-border w-screen -translate-x-1/2 overflow-x-auto border-y border-slate-200 bg-[#eef3f8] px-6 py-7 shadow-[0_14px_34px_rgba(15,35,66,0.10)]">
           <div className="pb-3">
             <div ref={bracketRef} className="relative mx-auto min-h-[1180px] min-w-[2100px]">
@@ -170,7 +168,7 @@ export default function KnockoutPage() {
               </svg>
 
               <div className="grid min-h-[1180px] min-w-[2100px] grid-cols-6 gap-12">
-                {stages.map((stage) => (
+                {knockoutStages.map((stage) => (
                   <div className="flex flex-col gap-5" key={stage.key}>
                     <header className="rounded-full bg-action px-4 py-2 text-center text-xs font-black uppercase tracking-[0.12em] text-white">
                       {stage.label}
@@ -200,11 +198,7 @@ export default function KnockoutPage() {
                           ) : null}
                           <KnockoutCard
                             compact={stage.key === 'FINAL'}
-                            href={
-                              matchIdByExternalId.get(match.id)
-                                ? `/matches/${matchIdByExternalId.get(match.id)}`
-                                : undefined
-                            }
+                            href={`/matches/${match.id}`}
                             match={match}
                           />
                         </div>
@@ -228,10 +222,10 @@ function KnockoutCard({
 }: {
   compact?: boolean;
   href?: string;
-  match: KnockoutMatch;
+  match: Match;
 }) {
-  const homeScore = match.score?.fullTime?.home;
-  const awayScore = match.score?.fullTime?.away;
+  const homeScore = match.homeScore;
+  const awayScore = match.awayScore;
   const hasScore =
     homeScore !== null && homeScore !== undefined && awayScore !== null && awayScore !== undefined;
   const homeTeam = getTeamDisplay(match.homeTeam);
@@ -244,7 +238,7 @@ function KnockoutCard({
       } ${href ? 'transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,35,66,0.16)]' : ''}`}
     >
       <p className="mb-3 text-xs font-bold text-slate-500">
-        {formatMatchDate(match.utcDate)} · {getExternalStatusLabel(match.status)}
+        {formatMatchDate(match.utcDate)} · {getStatusLabel(match.status)}
       </p>
       <TeamLine crest={homeTeam.crest} name={homeTeam.name} score={hasScore ? homeScore : null} />
       <div className="my-2 border-t border-slate-100" />
@@ -301,10 +295,10 @@ function TeamLine({
   );
 }
 
-function getTeamDisplay(team?: ExternalTeam | null) {
+function getTeamDisplay(team: Team) {
   return {
-    name: team?.shortName ?? team?.name ?? team?.tla ?? 'Por definir',
-    crest: team?.crest ?? null,
+    name: team.shortName ?? team.name,
+    crest: team.crestUrl ?? null,
   };
 }
 
@@ -317,12 +311,10 @@ function formatMatchDate(value: string) {
   }).format(new Date(value));
 }
 
-function getExternalStatusLabel(status: string) {
+function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
-    TIMED: 'Programado',
     SCHEDULED: 'Programado',
-    IN_PLAY: 'En vivo',
-    PAUSED: 'Pausado',
+    LIVE: 'En vivo',
     FINISHED: 'Final',
     POSTPONED: 'Postergado',
     CANCELLED: 'Cancelado',

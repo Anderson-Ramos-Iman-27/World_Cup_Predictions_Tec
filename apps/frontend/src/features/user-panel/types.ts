@@ -15,6 +15,7 @@ export type MatchStatus =
 export type Match = {
   id: string;
   externalId?: number | null;
+  stage?: string | null;
   utcDate: string;
   status: MatchStatus;
   homeScore?: number | null;

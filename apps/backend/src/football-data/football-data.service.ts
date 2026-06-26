@@ -5,6 +5,15 @@ import { ScoringService } from '../scoring/scoring.service';
 import { FootballDataClient } from './football-data.client';
 import { FootballDataMatch } from './types/football-data-match.type';
 
+const knockoutStages = new Set([
+  'LAST_32',
+  'LAST_16',
+  'QUARTER_FINALS',
+  'SEMI_FINALS',
+  'THIRD_PLACE',
+  'FINAL',
+]);
+
 export interface FootballDataSyncResult {
   status: SyncStatus;
   totalMatches?: number;
@@ -118,27 +127,73 @@ export class FootballDataService {
   }
 
   async getKnockoutMatches() {
-    const response = await this.footballDataClient.getMatches();
-    const knockoutStages = new Set([
-      'LAST_32',
-      'LAST_16',
-      'QUARTER_FINALS',
-      'SEMI_FINALS',
-      'THIRD_PLACE',
-      'FINAL',
-    ]);
+    const matches = await this.prisma.match.findMany({
+      where: {
+        stage: { in: Array.from(knockoutStages) },
+      },
+      include: {
+        homeTeam: {
+          select: {
+            externalId: true,
+            name: true,
+            shortName: true,
+            crestUrl: true,
+          },
+        },
+        awayTeam: {
+          select: {
+            externalId: true,
+            name: true,
+            shortName: true,
+            crestUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        utcDate: 'asc',
+      },
+    });
 
-    return response.matches
-      .filter((match) => match.stage && knockoutStages.has(match.stage))
-      .map((match) => ({
-        id: match.id,
-        utcDate: match.utcDate,
-        status: match.status,
-        stage: match.stage,
-        homeTeam: match.homeTeam,
-        awayTeam: match.awayTeam,
-        score: match.score,
-      }));
+    if (!matches.length) {
+      const response = await this.footballDataClient.getMatches();
+
+      return response.matches
+        .filter((match) => match.stage && knockoutStages.has(match.stage))
+        .map((match) => ({
+          id: match.id,
+          utcDate: match.utcDate,
+          status: match.status,
+          stage: match.stage,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          score: match.score,
+        }));
+    }
+
+    return matches.map((match) => ({
+      id: match.externalId ?? 0,
+      utcDate: match.utcDate.toISOString(),
+      status: match.status,
+      stage: match.stage ?? undefined,
+      homeTeam: {
+        id: match.homeTeam.externalId ?? 0,
+        name: match.homeTeam.name,
+        shortName: match.homeTeam.shortName,
+        crest: match.homeTeam.crestUrl,
+      },
+      awayTeam: {
+        id: match.awayTeam.externalId ?? 0,
+        name: match.awayTeam.name,
+        shortName: match.awayTeam.shortName,
+        crest: match.awayTeam.crestUrl,
+      },
+      score: {
+        fullTime: {
+          home: match.homeScore,
+          away: match.awayScore,
+        },
+      },
+    }));
   }
 
   private async upsertMatch(externalMatch: FootballDataMatch) {
@@ -161,6 +216,7 @@ export class FootballDataService {
         homeTeamId: homeTeam.id,
         awayTeamId: awayTeam.id,
         utcDate: new Date(externalMatch.utcDate),
+        stage: externalMatch.stage ?? null,
         status,
         homeScore: score?.home ?? null,
         awayScore: score?.away ?? null,
@@ -171,6 +227,7 @@ export class FootballDataService {
         homeTeamId: homeTeam.id,
         awayTeamId: awayTeam.id,
         utcDate: new Date(externalMatch.utcDate),
+        stage: externalMatch.stage ?? null,
         status,
         homeScore: score?.home ?? null,
         awayScore: score?.away ?? null,
