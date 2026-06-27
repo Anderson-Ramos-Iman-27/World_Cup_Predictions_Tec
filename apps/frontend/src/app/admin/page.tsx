@@ -475,9 +475,15 @@ export default function AdminPage() {
 
   function handleSyncNow() {
     void runSensitiveAction('Ejecutar sincronización', async () => {
-      await apiRequest('/admin/sync/football-data', { method: 'POST' });
-      await handleRefreshCompetitionSummary();
-      setMessage('Sincronización ejecutada.');
+      const response = await apiRequest<{ message?: string }>('/admin/sync/football-data', {
+        method: 'POST',
+      });
+
+      setMessage(response.message ?? 'Sincronización iniciada en segundo plano.');
+
+      window.setTimeout(() => {
+        void handleRefreshCompetitionSummary();
+      }, 12000);
     }, 'Se consultará Football-Data.org y se actualizarán equipos, partidos y resultados disponibles.', 'Sí, sincronizar');
   }
 

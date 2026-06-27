@@ -44,6 +44,14 @@ export class FootballDataService {
     return this.currentSync;
   }
 
+  queueSyncMatches() {
+    void this.syncMatches();
+
+    return {
+      message: 'Sincronización iniciada en segundo plano.',
+    };
+  }
+
   private async performSyncMatches(): Promise<FootballDataSyncResult> {
     const startedAt = new Date();
 
