@@ -3,7 +3,9 @@ import { MatchSource, MatchStatus, SyncStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScoringService } from '../scoring/scoring.service';
 import { FootballDataClient } from './football-data.client';
-import { FootballDataMatch } from './types/football-data-match.type';
+import { FootballDataMatch, FootballDataTeam } from './types/football-data-match.type';
+
+const placeholderTeamName = 'A definir';
 
 const knockoutStages = new Set([
   'LAST_32',
@@ -216,16 +218,12 @@ export class FootballDataService {
   }
 
   private async upsertMatch(externalMatch: FootballDataMatch) {
-    if (
-      !externalMatch.id ||
-      !this.isValidTeam(externalMatch.homeTeam) ||
-      !this.isValidTeam(externalMatch.awayTeam)
-    ) {
+    if (!externalMatch.id) {
       return null;
     }
 
-    const homeTeam = await this.upsertTeam(externalMatch.homeTeam);
-    const awayTeam = await this.upsertTeam(externalMatch.awayTeam);
+    const homeTeam = await this.resolveTeam(externalMatch.homeTeam);
+    const awayTeam = await this.resolveTeam(externalMatch.awayTeam);
     const status = this.mapStatus(externalMatch.status);
     const score = externalMatch.score?.fullTime;
 
@@ -255,7 +253,37 @@ export class FootballDataService {
     });
   }
 
-  private async upsertTeam(team: FootballDataMatch['homeTeam']) {
+  private async resolveTeam(team: FootballDataTeam) {
+    if (this.isValidTeam(team)) {
+      return this.upsertTeam(team);
+    }
+
+    return this.getPlaceholderTeam();
+  }
+
+  private async getPlaceholderTeam() {
+    const existingTeam = await this.prisma.team.findFirst({
+      where: {
+        externalId: null,
+        name: placeholderTeamName,
+      },
+    });
+
+    if (existingTeam) {
+      return existingTeam;
+    }
+
+    return this.prisma.team.create({
+      data: {
+        externalId: null,
+        name: placeholderTeamName,
+        shortName: null,
+        crestUrl: null,
+      },
+    });
+  }
+
+  private async upsertTeam(team: FootballDataTeam) {
     return this.prisma.team.upsert({
       where: { externalId: team.id as number },
       update: {
@@ -272,7 +300,7 @@ export class FootballDataService {
     });
   }
 
-  private isValidTeam(team: FootballDataMatch['homeTeam']) {
+  private isValidTeam(team: FootballDataTeam) {
     return Boolean(team?.id && team.name);
   }
 
